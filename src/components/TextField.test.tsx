@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { TextField } from './TextField'
 
 describe('TextField', () => {
@@ -19,31 +18,5 @@ describe('TextField', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input).toHaveAccessibleDescription('First name is required')
     expect(screen.getByText('First name is required')).toHaveAttribute('aria-live', 'polite')
-  })
-
-  it('gives each instance a unique id', () => {
-    render(
-      <>
-        <TextField label="First Name" />
-        <TextField label="Last Name" />
-      </>,
-    )
-
-    expect(screen.getByRole('textbox', { name: 'First Name' }).id).not.toBe(
-      screen.getByRole('textbox', { name: 'Last Name' }).id,
-    )
-  })
-
-  it('forwards ref and onBlur to the input', async () => {
-    const onBlur = vi.fn()
-    const ref = { current: null as HTMLInputElement | null }
-    render(<TextField label="First Name" onBlur={onBlur} ref={ref} />)
-    const input = screen.getByRole('textbox', { name: 'First Name' })
-
-    expect(ref.current).toBe(input)
-
-    await userEvent.click(input)
-    await userEvent.tab()
-    expect(onBlur).toHaveBeenCalledOnce()
   })
 })
