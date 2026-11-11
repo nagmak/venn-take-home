@@ -18,6 +18,10 @@ See [docs/incidents.md](docs/incidents.md).
 - **Check interactions between async paths**, not only each path alone: blur + submit, cache hit + request in flight, the value changing during a check, consecutive submits.
 - **Tests wait for an observable outcome**, never a fixed delay. To hold a mocked response, use a gate the test opens (`src/test/gate.ts`, `holdCorporationChecks`). To assert that a late answer is ignored, wait for `waitForCheckHandled`. `npm run lint` enforces this (`test-rules/no-fixed-delay`).
 
+## Known limitations (don't report as bugs)
+
+- **Corporation answers are cached for the session.** A number rejected and then registered mid-session stays rejected until reload; one accepted and then deregistered is still caught by the server on submit. Re-checking rejected numbers was tried and reverted; see the comment in `src/features/onboarding/corporationNumberQuery.ts`.
+
 ## How to report
 
 - Open with a summary: the number of findings, or "No issues".

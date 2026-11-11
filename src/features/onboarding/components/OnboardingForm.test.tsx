@@ -225,7 +225,7 @@ describe('OnboardingForm', () => {
     await waitForCheckHandled(INVALID)
   })
 
-  it('checks an accepted corporation number with the API only once', async () => {
+  it('checks each corporation number with the API only once', async () => {
     let apiCalls = 0
     server.use(
       http.get(CORPORATION_URL, () => {
@@ -242,26 +242,6 @@ describe('OnboardingForm', () => {
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
     expect(apiCalls).toBe(1)
-  })
-
-  it('asks the API again about a rejected number, in case it has been registered since', async () => {
-    const user = userEvent.setup()
-    renderForm()
-
-    await typeAndBlur(user, 'Corporation Number', INVALID)
-    await waitFor(() =>
-      expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
-    )
-
-    // The number is registered; the next blur asks again and accepts it.
-    server.use(
-      http.get(CORPORATION_URL, ({ params }) =>
-        HttpResponse.json({ corporationNumber: String(params.number), valid: true }),
-      ),
-    )
-    await user.click(field('Corporation Number'))
-    await user.tab()
-    await waitFor(() => expect(field('Corporation Number')).not.toHaveAccessibleDescription())
   })
 
   it('asks the user to retry when the corporation number cannot be checked, and retries on the next blur', async () => {

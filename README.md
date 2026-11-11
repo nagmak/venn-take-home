@@ -26,7 +26,7 @@ npm run dev
 
 - **Vite + React 19 + TypeScript** (strict mode is TypeScript 7's default)
 - **react-hook-form + zod**: one zod schema defines the validation rules and the form's types
-- **TanStack Query**: caches each accepted corporation number and shares a check already in flight
+- **TanStack Query**: caches each corporation number's answer and shares a check already in flight
 - **libphonenumber-js**: confirms a phone number is Canadian
 - **CSS Modules** with design tokens as CSS variables
 - **Vitest + React Testing Library + MSW**: integration tests against a mocked network
