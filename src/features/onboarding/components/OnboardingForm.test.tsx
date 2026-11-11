@@ -293,6 +293,40 @@ describe('OnboardingForm', () => {
     )
   })
 
+  it('clears the previous success when a later submit fails validation', async () => {
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+
+    await user.clear(field('First Name'))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Please fix the highlighted fields.'))
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  it('does not bring back an old API error once the fields are fixed', async () => {
+    server.use(http.post(PROFILE_URL, () => HttpResponse.json({ message: 'Invalid phone number' }, { status: 400 })))
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid phone number'))
+
+    await user.clear(field('First Name'))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Please fix the highlighted fields.'))
+
+    await typeAndBlur(user, 'First Name', 'Hello')
+    await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement())
+  })
+
   it('shows "Submitting…" while sending and sends only one request on a double click', async () => {
     let posts = 0
     server.use(
