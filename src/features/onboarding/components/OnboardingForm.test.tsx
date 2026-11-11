@@ -378,6 +378,32 @@ describe('OnboardingForm', () => {
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
 
+  it('clears the previous result as soon as a new submit starts', async () => {
+    const second = VALID_CORPORATION_NUMBERS[1]
+    server.use(
+      http.get(CORPORATION_URL, async ({ params }) => {
+        if (params.number === second) await delay(200)
+        // Fall through to the default handler.
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+
+    await user.clear(field('Corporation Number'))
+    await user.type(field('Corporation Number'), second)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    // While the new number is still being checked, the old success is gone.
+    expect(await screen.findByRole('button', { name: 'Submitting…' })).toBeDisabled()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
   it('does not bring back an old API error once the fields are fixed', async () => {
     server.use(http.post(PROFILE_URL, () => HttpResponse.json({ message: 'Invalid phone number' }, { status: 400 })))
     const user = userEvent.setup()

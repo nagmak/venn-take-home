@@ -13,11 +13,10 @@ export type SubmitStatus =
 export function useOnboardingSubmit() {
   const [status, setStatus] = useState<SubmitStatus>({ state: 'idle' })
 
-  /** Clears the last result, e.g. when a new submit attempt fails validation. */
+  /** Clears the last result; call at the start of every submit attempt. */
   const clearStatus = useCallback(() => setStatus({ state: 'idle' }), [])
 
   const submit = useCallback(async (values: OnboardingFormValues) => {
-    setStatus({ state: 'idle' })
     try {
       await submitProfileDetails(values)
       setStatus({ state: 'success' })

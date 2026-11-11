@@ -73,8 +73,11 @@ export function OnboardingForm() {
     <form
       className={styles.card}
       aria-labelledby="onboarding-form-title"
-      // Every submit attempt replaces the previous result, including ones that fail validation.
-      onSubmit={handleSubmit(submit, clearStatus)}
+      onSubmit={(event) => {
+        // Clear the previous result as soon as a new attempt starts, before validation.
+        clearStatus()
+        return handleSubmit(submit)(event)
+      }}
     >
       <h1 id="onboarding-form-title" className={styles.title}>
         Onboarding Form
