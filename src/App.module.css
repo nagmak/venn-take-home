@@ -1,0 +1,15 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 96px;
+  min-height: 100svh;
+  padding: 48px var(--space-4);
+}
+
+@media (max-width: 600px) {
+  .page {
+    gap: 48px;
+    padding-top: 32px;
+  }
+}

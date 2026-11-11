@@ -1,14 +1,21 @@
 :root {
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+
   --color-text: #000;
   --color-border: #d9d9d9;
+  --color-card-border: #e5e5e5;
   --color-focus: #000;
   --color-error: #e00000;
   --color-surface: #fff;
+  --color-page: #f4f4f4;
   --color-primary: #000;
   --color-on-primary: #fff;
 
   --radius-md: 8px;
+  --radius-lg: 16px;
   --control-height: 46px;
   --space-2: 8px;
   --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
 }
