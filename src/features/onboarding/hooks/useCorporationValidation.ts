@@ -7,8 +7,8 @@ type InFlight = { corporationNumber: string; controller: AbortController }
 
 /**
  * Checks corporation numbers against the API. `check` resolves to an error
- * message, or undefined if the number is valid. `isChecking` is true while a
- * request for the most recently checked number is pending.
+ * message, or undefined if the number is valid. `checkingNumber` is the number
+ * whose request is pending, or null.
  *
  * - Each number is requested once: answers and in-flight checks are shared.
  * - Checking a different number aborts the request still in flight.
@@ -17,7 +17,7 @@ type InFlight = { corporationNumber: string; controller: AbortController }
 export function useCorporationValidation() {
   const checks = useRef(new Map<string, Promise<string | undefined>>())
   const inFlight = useRef<InFlight | null>(null)
-  const [isChecking, setIsChecking] = useState(false)
+  const [checkingNumber, setCheckingNumber] = useState<string | null>(null)
 
   // Cancel a pending request if the form goes away.
   useEffect(() => () => inFlight.current?.controller.abort(), [])
@@ -26,7 +26,7 @@ export function useCorporationValidation() {
     const stopInFlight = () => {
       inFlight.current?.controller.abort()
       inFlight.current = null
-      setIsChecking(false)
+      setCheckingNumber(null)
     }
 
     const existing = checks.current.get(corporationNumber)
@@ -39,12 +39,12 @@ export function useCorporationValidation() {
     stopInFlight()
     const request: InFlight = { corporationNumber, controller: new AbortController() }
     inFlight.current = request
-    setIsChecking(true)
+    setCheckingNumber(corporationNumber)
 
     const done = () => {
       if (inFlight.current !== request) return
       inFlight.current = null
-      setIsChecking(false)
+      setCheckingNumber(null)
     }
 
     const pending = validateCorporationNumber(corporationNumber, request.controller.signal).then(
@@ -65,5 +65,5 @@ export function useCorporationValidation() {
     return pending
   }, [])
 
-  return { check, isChecking }
+  return { check, checkingNumber }
 }

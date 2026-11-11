@@ -187,6 +187,26 @@ describe('OnboardingForm', () => {
     expect(posts).toBe(0)
   })
 
+  it('shows the field\'s own error, not "Checking…", once its value no longer matches the pending check', async () => {
+    server.use(
+      http.get(CORPORATION_URL, async () => {
+        await delay(300)
+        // Fall through to the default handler.
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    expect(await screen.findByText('Checking…')).toBeInTheDocument()
+
+    await user.clear(field('Corporation Number'))
+    await user.tab()
+
+    expect(field('Corporation Number')).toHaveAccessibleDescription('Corporation number is required')
+    expect(field('Corporation Number')).toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('stops "Checking…" when the field returns to an already-checked number', async () => {
     server.use(
       http.get(CORPORATION_URL, async ({ params }) => {
