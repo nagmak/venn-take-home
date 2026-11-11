@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { Button } from '../../../components/Button/Button'
 import { TextField } from '../../../components/TextField/TextField'
+import { CorporationNumberField } from './CorporationNumberField'
 import styles from './OnboardingForm.module.css'
 import {
   CORPORATION_NUMBER_LENGTH,
@@ -61,9 +62,9 @@ const FIX_FIELDS_MESSAGE = 'Please fix the highlighted fields.'
 export function OnboardingForm() {
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting, isSubmitted, isSubmitSuccessful },
-    isCheckingCorporationNumber,
   } = useOnboardingForm()
   const { status, onSubmit } = useOnboardingSubmit(handleSubmit)
   // After a submit that failed validation; clears once every field is fixed.
@@ -80,22 +81,22 @@ export function OnboardingForm() {
       </h1>
       <div className={styles.fields}>
         {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete, inputMode }) => {
-          const checking = name === 'corporationNumber' && isCheckingCorporationNumber
-          return (
-            <TextField
-              key={name}
-              {...register(name)}
-              label={label}
-              type={type}
-              maxLength={maxLength}
-              autoComplete={autoComplete}
-              inputMode={inputMode}
-              // Locked while submitting, so the values sent are the values checked.
-              readOnly={isSubmitting}
-              error={checking ? undefined : errors[name]?.message}
-              hint={checking ? 'Checking…' : undefined}
-              className={fullWidth ? styles.fullWidth : undefined}
-            />
+          const props = {
+            ...register(name),
+            label,
+            type,
+            maxLength,
+            autoComplete,
+            inputMode,
+            // Locked while submitting, so the form shows exactly what is being sent.
+            readOnly: isSubmitting,
+            error: errors[name]?.message,
+            className: fullWidth ? styles.fullWidth : undefined,
+          }
+          return name === 'corporationNumber' ? (
+            <CorporationNumberField key={name} control={control} {...props} />
+          ) : (
+            <TextField key={name} {...props} />
           )
         })}
       </div>

@@ -15,13 +15,10 @@ const corporationNumberResponse = z.object({
 
 export type CorporationNumberResult = { valid: true } | { valid: false; message: string }
 
-export async function validateCorporationNumber(
-  corporationNumber: string,
-  signal?: AbortSignal,
-): Promise<CorporationNumberResult> {
+export async function validateCorporationNumber(corporationNumber: string): Promise<CorporationNumberResult> {
   let body: unknown
   try {
-    body = await request(`/corporation-number/${encodeURIComponent(corporationNumber)}`, { signal })
+    body = await request(`/corporation-number/${encodeURIComponent(corporationNumber)}`)
   } catch (error) {
     // The API answers an unknown number with 404 and { valid: false, message }.
     if (!(error instanceof ApiError && error.status === 404)) throw error

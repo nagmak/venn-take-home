@@ -12,9 +12,10 @@ What a reviewer of this repo should check. Style is the linter's job, so don't r
 
 See [docs/incidents.md](docs/incidents.md).
 
-- **Never cancel a shared or cached promise on behalf of one caller.** Other callers may be waiting on it and would get a cancelled result. This came up in three review cycles in a row. To ignore an outdated answer, discard it where it's used; react-hook-form already does this for blur results.
+- **Use a well-tested library for caching, request sharing and cancellation; don't hand-roll it.** A hand-written version of the corporation check produced a new async bug in every review cycle until it was replaced with TanStack Query.
+- **Never cancel a shared or cached request on behalf of one caller.** Other callers may be waiting on it and would get a cancelled result. To ignore an outdated answer, discard it where it's used; react-hook-form already does this for blur results.
 - **Check interactions between async paths**, not only each path alone: blur + submit, cache hit + request in flight, the value changing during a check, consecutive submits.
-- **Tests wait for an observable outcome**, never a fixed delay. `npm run lint` enforces this (`test-rules/no-fixed-delay`); `delay()` is only allowed inside MSW handlers.
+- **Tests wait for an observable outcome**, never a fixed delay. To hold a mocked response, use a gate the test opens (`src/test/gate.ts`, `holdCorporationChecks`). To assert that a late answer is ignored, wait for `waitForCheckHandled`. `npm run lint` enforces this (`test-rules/no-fixed-delay`).
 
 ## How to report
 

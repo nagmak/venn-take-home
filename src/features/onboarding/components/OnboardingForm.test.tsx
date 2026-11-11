@@ -1,14 +1,19 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
-import { delay, http, HttpResponse } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { API_BASE_URL } from '../../../api/config'
+import { createGate } from '../../../test/gate'
+import { CORPORATION_URL, holdCorporationChecks, PROFILE_URL } from '../../../test/mocks/corporationApi'
 import { VALID_CORPORATION_NUMBERS } from '../../../test/mocks/handlers'
 import { server } from '../../../test/mocks/server'
+import { renderWithQueryClient } from '../../../test/render'
 import { OnboardingForm } from './OnboardingForm'
 
-const CORPORATION_URL = `${API_BASE_URL}/corporation-number/:number`
-const PROFILE_URL = `${API_BASE_URL}/profile-details`
+const [VALID, OTHER_VALID] = VALID_CORPORATION_NUMBERS
+const INVALID = '000000000'
+const SUCCESS = 'Thanks! Your details have been submitted.'
+
+const renderForm = () => renderWithQueryClient(<OnboardingForm />)
 
 const field = (label: string) => screen.getByRole('textbox', { name: label })
 
@@ -22,13 +27,13 @@ const fillValidForm = async (user: UserEvent) => {
   await user.type(field('First Name'), '  Hello ')
   await user.type(field('Last Name'), 'World')
   await user.type(field('Phone Number'), '+13062776103')
-  await user.type(field('Corporation Number'), VALID_CORPORATION_NUMBERS[0])
+  await user.type(field('Corporation Number'), VALID)
 }
 
 describe('OnboardingForm', () => {
   it('validates on blur and clears the error once the value is fixed', async () => {
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await user.type(field('Phone Number'), '306-277-6103')
     await user.tab()
@@ -49,7 +54,7 @@ describe('OnboardingForm', () => {
     ['Phone Number', 12],
     ['Corporation Number', 9],
   ])('limits %s to %i characters', (label, limit) => {
-    render(<OnboardingForm />)
+    renderForm()
 
     // Checks the attribute instead of typing past the limit, because of a bug in
     // @testing-library/user-event: it lists the phone input type as "telephone"
@@ -61,7 +66,7 @@ describe('OnboardingForm', () => {
 
   it('on submit, shows an error under every empty field, focuses the first and asks to fix them', async () => {
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
@@ -75,7 +80,7 @@ describe('OnboardingForm', () => {
     await typeAndBlur(user, 'First Name', 'Hello')
     await typeAndBlur(user, 'Last Name', 'World')
     await typeAndBlur(user, 'Phone Number', '+13062776103')
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await typeAndBlur(user, 'Corporation Number', VALID)
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement())
   })
@@ -89,7 +94,7 @@ describe('OnboardingForm', () => {
       }),
     )
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await typeAndBlur(user, 'Corporation Number', '12345')
 
@@ -106,9 +111,9 @@ describe('OnboardingForm', () => {
       }),
     )
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
-    await typeAndBlur(user, 'Corporation Number', '000000000')
+    await typeAndBlur(user, 'Corporation Number', INVALID)
     await waitFor(() =>
       expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
     )
@@ -126,146 +131,95 @@ describe('OnboardingForm', () => {
   })
 
   it('shows "Checking…" while the corporation number is being checked', async () => {
-    server.use(
-      http.get(CORPORATION_URL, async () => {
-        await delay(100)
-        // Fall through to the default handler.
-      }),
-    )
+    const api = holdCorporationChecks(VALID)
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await typeAndBlur(user, 'Corporation Number', VALID)
 
     expect(await screen.findByText('Checking…')).toBeInTheDocument()
     expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
+    api.release(VALID)
     await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
   })
 
   it("ignores a stale check's late answer once the field holds a different number", async () => {
-    const stale = '000000000'
-    let releaseStale!: () => void
-    const staleReleased = new Promise<void>((resolve) => (releaseStale = resolve))
-    let staleAnswered!: () => void
-    const staleAnswer = new Promise<void>((resolve) => (staleAnswered = resolve))
-    server.events.on('response:mocked', ({ request }) => {
-      if (request.url.endsWith(stale)) staleAnswered()
-    })
-    server.use(
-      http.get(CORPORATION_URL, async ({ params }) => {
-        // The stale number is answered only once the field holds the new one, and
-        // the new one only after that, so the stale answer has landed by the time
-        // "Checking…" goes away.
-        await (params.number === stale ? staleReleased : staleAnswer)
-        // Fall through to the default handler (the stale number is invalid).
-      }),
-    )
+    const api = holdCorporationChecks(INVALID)
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    const { waitForCheckHandled } = renderForm()
 
-    await typeAndBlur(user, 'Corporation Number', stale)
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
-    expect(await screen.findByText('Checking…')).toBeInTheDocument()
-
-    releaseStale()
+    await typeAndBlur(user, 'Corporation Number', INVALID)
+    await typeAndBlur(user, 'Corporation Number', VALID)
     await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
+
+    // The invalid number's answer arrives only now, while the field holds the valid one.
+    api.release(INVALID)
+    await waitForCheckHandled(INVALID)
+
     expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
   })
 
   it('locks the fields while submitting, so the number sent is the number checked', async () => {
-    const [checked, other] = VALID_CORPORATION_NUMBERS
     let body: unknown
     server.use(
-      http.get(CORPORATION_URL, async ({ params }) => {
-        if (params.number === checked) await delay(200)
-        // Fall through to the default handler.
-      }),
       http.post(PROFILE_URL, async ({ request }) => {
         body = await request.json()
         return new HttpResponse(null, { status: 200 })
       }),
     )
+    const api = holdCorporationChecks(VALID)
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
-    // Check `other` first so it's cached, then submit with `checked` (slow check).
-    await typeAndBlur(user, 'Corporation Number', other)
     await fillValidForm(user)
-    await user.clear(field('Corporation Number'))
-    await user.type(field('Corporation Number'), checked)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-    // The number can't be changed mid-submit.
+    // Try to change the number while its check is pending: without the lock,
+    // this deletes the last digit and types a 1.
     expect(field('Corporation Number')).toHaveAttribute('readonly')
-    await user.type(field('Corporation Number'), '1')
-    await user.tab()
+    await user.type(field('Corporation Number'), '{Backspace}1')
+    api.release(VALID)
 
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
-    )
-    expect(field('Corporation Number')).toHaveValue(checked)
-    expect(field('Corporation Number')).not.toHaveAccessibleDescription()
-    expect(body).toMatchObject({ corporationNumber: checked })
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
+    expect(field('Corporation Number')).toHaveValue(VALID)
+    expect(body).toMatchObject({ corporationNumber: VALID })
   })
 
   it('shows the field\'s own error, not "Checking…", once its value no longer matches the pending check', async () => {
-    server.use(
-      http.get(CORPORATION_URL, async () => {
-        await delay(300)
-        // Fall through to the default handler.
-      }),
-    )
+    const api = holdCorporationChecks(VALID)
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    const { waitForCheckHandled } = renderForm()
 
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await typeAndBlur(user, 'Corporation Number', VALID)
     expect(await screen.findByText('Checking…')).toBeInTheDocument()
 
     await user.clear(field('Corporation Number'))
     await user.tab()
+    expect(field('Corporation Number')).toHaveAccessibleDescription('Corporation number is required')
 
+    // The valid answer for the old value must not clear the current error.
+    api.release(VALID)
+    await waitForCheckHandled(VALID)
     expect(field('Corporation Number')).toHaveAccessibleDescription('Corporation number is required')
     expect(field('Corporation Number')).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('stops "Checking…" when the field returns to an already-checked number', async () => {
-    server.use(
-      http.get(CORPORATION_URL, async ({ params }) => {
-        if (params.number === '000000000') await delay(300)
-        // Fall through to the default handler.
-      }),
-    )
+  it("shows an already-checked number's answer at once, while another number is still being checked", async () => {
+    const api = holdCorporationChecks(INVALID)
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await typeAndBlur(user, 'Corporation Number', VALID)
     await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
-    await typeAndBlur(user, 'Corporation Number', '000000000')
+    await typeAndBlur(user, 'Corporation Number', INVALID)
     expect(await screen.findByText('Checking…')).toBeInTheDocument()
 
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await typeAndBlur(user, 'Corporation Number', VALID)
 
-    // The cached answer shows straight away; no waiting on the other number's check.
     expect(screen.queryByText('Checking…')).not.toBeInTheDocument()
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
-  })
-
-  it('cancels a pending corporation check when the form unmounts', async () => {
-    let aborted = false
-    server.use(
-      http.get(CORPORATION_URL, async ({ request }) => {
-        await delay(200)
-        aborted = request.signal.aborted
-      }),
-    )
-    const user = userEvent.setup()
-    const { unmount } = render(<OnboardingForm />)
-
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
-    unmount()
-
-    await waitFor(() => expect(aborted).toBe(true))
+    api.release(INVALID)
   })
 
   it('checks each corporation number with the API only once', async () => {
@@ -276,31 +230,33 @@ describe('OnboardingForm', () => {
       }),
     )
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.tab()
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await typeAndBlur(user, 'Corporation Number', VALID)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
-    )
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
     expect(apiCalls).toBe(1)
   })
 
-  it('asks the user to retry when the corporation number cannot be checked', async () => {
-    server.use(http.get(CORPORATION_URL, () => HttpResponse.error()))
+  it('asks the user to retry when the corporation number cannot be checked, and retries on the next blur', async () => {
+    server.use(http.get(CORPORATION_URL, () => HttpResponse.error(), { once: true }))
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
-
+    await typeAndBlur(user, 'Corporation Number', VALID)
     await waitFor(() =>
       expect(field('Corporation Number')).toHaveAccessibleDescription(
         'Could not verify corporation number. Please try again.',
       ),
     )
+
+    // The failure isn't cached: blurring again asks the API again, which now answers.
+    await user.click(field('Corporation Number'))
+    await user.tab()
+    await waitFor(() => expect(field('Corporation Number')).not.toHaveAccessibleDescription())
   })
 
   it('submits the trimmed values and confirms success', async () => {
@@ -312,26 +268,24 @@ describe('OnboardingForm', () => {
       }),
     )
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
-    )
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
     expect(body).toEqual({
       firstName: 'Hello',
       lastName: 'World',
       phone: '+13062776103',
-      corporationNumber: VALID_CORPORATION_NUMBERS[0],
+      corporationNumber: VALID,
     })
   })
 
   it('shows the API message when the submission is rejected', async () => {
     server.use(http.post(PROFILE_URL, () => HttpResponse.json({ message: 'Invalid phone number' }, { status: 400 })))
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -342,7 +296,7 @@ describe('OnboardingForm', () => {
   it('asks the user to check their connection when the submission cannot be sent', async () => {
     server.use(http.post(PROFILE_URL, () => HttpResponse.error()))
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -357,7 +311,7 @@ describe('OnboardingForm', () => {
       http.post(PROFILE_URL, () => HttpResponse.json({ message: 'Internal: db timeout' }, { status: 500 })),
     )
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -370,13 +324,11 @@ describe('OnboardingForm', () => {
 
   it('clears the previous success when a later submit fails validation', async () => {
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
-    )
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
 
     await user.clear(field('First Name'))
     await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -386,35 +338,30 @@ describe('OnboardingForm', () => {
   })
 
   it('clears the previous result as soon as a new submit starts', async () => {
-    const second = VALID_CORPORATION_NUMBERS[1]
-    server.use(
-      http.get(CORPORATION_URL, async ({ params }) => {
-        if (params.number === second) await delay(200)
-        // Fall through to the default handler.
-      }),
-    )
+    const api = holdCorporationChecks(OTHER_VALID)
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
-    )
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
 
     await user.clear(field('Corporation Number'))
-    await user.type(field('Corporation Number'), second)
+    await user.type(field('Corporation Number'), OTHER_VALID)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     // While the new number is still being checked, the old success is gone.
     expect(await screen.findByRole('button', { name: 'Submitting…' })).toBeDisabled()
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    api.release(OTHER_VALID)
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
   })
 
   it('does not bring back an old API error once the fields are fixed', async () => {
     server.use(http.post(PROFILE_URL, () => HttpResponse.json({ message: 'Invalid phone number' }, { status: 400 })))
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -430,23 +377,23 @@ describe('OnboardingForm', () => {
 
   it('shows "Submitting…" while sending and sends only one request on a double click', async () => {
     let posts = 0
+    const response = createGate()
     server.use(
       http.post(PROFILE_URL, async () => {
         posts++
-        await delay(100)
+        await response.opened
         return new HttpResponse(null, { status: 200 })
       }),
     )
     const user = userEvent.setup()
-    render(<OnboardingForm />)
+    renderForm()
 
     await fillValidForm(user)
     await user.dblClick(screen.getByRole('button', { name: 'Submit' }))
 
     expect(await screen.findByRole('button', { name: 'Submitting…' })).toBeDisabled()
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
-    )
+    response.open()
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(SUCCESS))
     expect(posts).toBe(1)
   })
 })

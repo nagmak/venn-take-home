@@ -18,7 +18,6 @@ export class ApiError extends Error {
 type RequestOptions = {
   method?: 'GET' | 'POST'
   json?: unknown
-  signal?: AbortSignal
 }
 
 const parseBody = async (response: Response): Promise<unknown> => {
@@ -39,19 +38,17 @@ const messageFrom = (body: unknown) =>
 /**
  * Sends a request to the API and returns the parsed JSON body.
  * Throws ApiError for non-2xx responses and for network failures
- * (status NETWORK_ERROR_STATUS). Aborts are rethrown unchanged.
+ * (status NETWORK_ERROR_STATUS).
  */
-export async function request<T>(path: string, { method = 'GET', json, signal }: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, { method = 'GET', json }: RequestOptions = {}): Promise<T> {
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      signal,
       headers: json === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: json === undefined ? undefined : JSON.stringify(json),
     })
-  } catch (error) {
-    if (signal?.aborted) throw error
+  } catch {
     throw new ApiError(NETWORK_ERROR_STATUS, 'Network error. Check your connection and try again.')
   }
 

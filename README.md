@@ -26,6 +26,7 @@ npm run dev
 
 - **Vite + React 19 + TypeScript** (strict mode is TypeScript 7's default)
 - **react-hook-form + zod**: one zod schema defines the validation rules and the form's types
+- **TanStack Query**: caches each corporation number's answer and shares a check already in flight
 - **libphonenumber-js**: confirms a phone number is Canadian
 - **CSS Modules** with design tokens as CSS variables
 - **Vitest + React Testing Library + MSW**: integration tests against a mocked network
@@ -38,11 +39,12 @@ src/
   components/           Shared UI, one folder per component (Button, StepIndicator, TextField)
   features/
     onboarding/
-      components/       OnboardingForm
-      hooks/            Form state, corporation number check, submit
+      components/       OnboardingForm, CorporationNumberField
+      hooks/            Form state and submit
+      corporationNumberQuery.ts  The corporation number check (TanStack Query)
       onboardingSchema.ts  Validation rules and types
   styles/               Design tokens and global styles
-  test/                 Test setup and MSW mocks
+  test/                 Test setup, MSW mocks and helpers
 ```
 
 - `components/` is UI any feature could reuse; anything specific to one feature lives in that feature.
@@ -52,7 +54,7 @@ src/
 
 ## Linting
 
-The brief lists ESLint as optional. This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter), the Vite template's default, which runs ESLint-compatible rules. `.oxlintrc.json` enables the React hooks and fast-refresh rules, TypeScript correctness rules, and the import boundaries above. A local rule in `lint/test-rules.js` stops tests from waiting a fixed time instead of waiting for an outcome.
+The brief lists ESLint as optional. This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter), the Vite template's default, which runs ESLint-compatible rules. `.oxlintrc.json` enables the React hooks and fast-refresh rules, TypeScript correctness rules, and the import boundaries above. A local rule in `lint/test-rules.js` stops tests from waiting a fixed time instead of waiting for an outcome; tests hold mocked responses with a gate (`src/test/gate.ts`) instead.
 
 ## AI use
 

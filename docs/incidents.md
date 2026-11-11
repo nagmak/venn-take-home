@@ -14,11 +14,13 @@ Found by two `/code-review` runs after PR #9 was merged. Fixed on `fix/review-fi
 | After a success, a submit that failed validation showed the success and fix-fields messages together | `122c766`, `5ad17a8` | `f35263f` |
 | After a 400, fixing the fields brought the old API message back without resubmitting | `122c766`, `5ad17a8` | `f35263f` |
 | The previous submit result stayed visible while a new submit was still validating (e.g. waiting on a slow corporation check) | `54ef532` | `2f288dc` |
-| A pending corporation check kept running after the form unmounted | `7f24390` | `12d1786` |
+| A pending corporation check kept running after the form unmounted | `7f24390` | `12d1786`; no longer applies after the TanStack Query refactor, where answers live in the app-wide cache, so a check that finishes after unmount is kept and reused |
 | `TextField` treated `error=""` as an error: the hint was dropped and the message styled as an error without `aria-invalid` | `4a1b039` | `94553db` |
 
 **Which check should have caught it:** a fresh-context code review before merging. PRs #8 and #9 were Medium tier, which calls for an AI review pass before merge; the reviews ran only after PR #9 was merged. The tests covered each behaviour on its own path (blur, submit), but not the combinations: a check cancelled while a submit shared it, a cache hit while another number was in flight, a value changing during a pending check, and consecutive submits. One test relied on timing (`aborts a stale check…`) and was flaky until `32c03c5`.
 
 **Missing check to add:** run `/code-review` on every Medium or High PR before it merges, and add regression tests for interactions between async paths (blur + submit, cache + in-flight request, value changes during a check, consecutive submits).
+
+**Root cause and rethink:** after four review cycles kept finding async bugs in the hand-written check (cache, shared requests, cancellation, pending state), it was replaced with TanStack Query, and timing-based tests were replaced with gates the test opens.
 
 **Added:** [REVIEW.md](../REVIEW.md) records the rules from these bugs (never cancel a shared promise for one caller; check async interactions). The lint rule `test-rules/no-fixed-delay` makes tests wait for an observable outcome instead of a fixed delay.
