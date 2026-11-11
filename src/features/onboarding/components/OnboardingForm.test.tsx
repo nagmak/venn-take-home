@@ -310,6 +310,22 @@ describe('OnboardingForm', () => {
     )
   })
 
+  it('shows a generic message, not the raw API message, for a server error', async () => {
+    server.use(
+      http.post(PROFILE_URL, () => HttpResponse.json({ message: 'Internal: db timeout' }, { status: 500 })),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong. Please try again.'),
+    )
+    expect(screen.queryByText(/db timeout/)).not.toBeInTheDocument()
+  })
+
   it('clears the previous success when a later submit fails validation', async () => {
     const user = userEvent.setup()
     render(<OnboardingForm />)
