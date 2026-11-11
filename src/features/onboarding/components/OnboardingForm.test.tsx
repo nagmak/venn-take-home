@@ -162,29 +162,40 @@ describe('OnboardingForm', () => {
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
   })
 
-  it('does not submit a corporation number whose check was cancelled', async () => {
-    let posts = 0
+  it('locks the fields while submitting, so the number sent is the number checked', async () => {
+    const [checked, other] = VALID_CORPORATION_NUMBERS
+    let body: unknown
     server.use(
       http.get(CORPORATION_URL, async ({ params }) => {
-        if (params.number === VALID_CORPORATION_NUMBERS[0]) await delay(200)
+        if (params.number === checked) await delay(200)
         // Fall through to the default handler.
       }),
-      http.post(PROFILE_URL, () => {
-        posts++
+      http.post(PROFILE_URL, async ({ request }) => {
+        body = await request.json()
         return new HttpResponse(null, { status: 200 })
       }),
     )
     const user = userEvent.setup()
     render(<OnboardingForm />)
 
+    // Check `other` first so it's cached, then submit with `checked` (slow check).
+    await typeAndBlur(user, 'Corporation Number', other)
     await fillValidForm(user)
-    // Submit starts a (slow) check for the first number...
+    await user.clear(field('Corporation Number'))
+    await user.type(field('Corporation Number'), checked)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
-    // ...which is cancelled when the field changes and is checked again.
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[1])
 
-    await delay(300)
-    expect(posts).toBe(0)
+    // The number can't be changed mid-submit.
+    expect(field('Corporation Number')).toHaveAttribute('readonly')
+    await user.type(field('Corporation Number'), '1')
+    await user.tab()
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+    expect(field('Corporation Number')).toHaveValue(checked)
+    expect(field('Corporation Number')).not.toHaveAccessibleDescription()
+    expect(body).toMatchObject({ corporationNumber: checked })
   })
 
   it('shows the field\'s own error, not "Checking…", once its value no longer matches the pending check', async () => {

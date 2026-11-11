@@ -91,6 +91,8 @@ export function OnboardingForm() {
               maxLength={maxLength}
               autoComplete={autoComplete}
               inputMode={inputMode}
+              // Locked while submitting, so the values sent are the values checked.
+              readOnly={isSubmitting}
               error={checking ? undefined : errors[name]?.message}
               hint={checking ? 'Checking…' : undefined}
               className={fullWidth ? styles.fullWidth : undefined}

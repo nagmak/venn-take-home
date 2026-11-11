@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { validateCorporationNumber } from '../../../api/onboarding'
 
 const UNAVAILABLE_MESSAGE = 'Could not verify corporation number. Please try again.'
+const CANCELLED_MESSAGE = 'Checking was interrupted. Please try again.'
 
 type InFlight = { corporationNumber: string; controller: AbortController }
 
@@ -59,10 +60,11 @@ export function useCorporationValidation() {
       () => {
         checks.current.delete(corporationNumber)
         done()
-        // Never treat an unverified number as valid, including when the check
-        // was cancelled: on blur react-hook-form ignores the result (the value
-        // changed), and a submit sharing this check is blocked.
-        return UNAVAILABLE_MESSAGE
+        // Never treat an unverified number as valid. A cancelled check is a
+        // stale blur result (react-hook-form ignores it, as the value changed)
+        // or an unmount; fields are read-only while submitting, so a submit's
+        // check can't be cancelled by an edit.
+        return request.controller.signal.aborted ? CANCELLED_MESSAGE : UNAVAILABLE_MESSAGE
       },
     )
     checks.current.set(corporationNumber, pending)

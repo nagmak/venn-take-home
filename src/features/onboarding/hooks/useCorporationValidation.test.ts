@@ -9,6 +9,24 @@ import { useCorporationValidation } from './useCorporationValidation'
 const [A, B] = VALID_CORPORATION_NUMBERS
 
 describe('useCorporationValidation', () => {
+  it('reports a cancelled check as interrupted, never as valid', async () => {
+    server.use(
+      http.get(`${API_BASE_URL}/corporation-number/:number`, async () => {
+        await delay(50)
+        // Fall through to the default handler.
+      }),
+    )
+    const { result } = renderHook(() => useCorporationValidation())
+
+    let cancelled: Promise<string | undefined> = Promise.resolve(undefined)
+    act(() => {
+      cancelled = result.current.check(A)
+      void result.current.check(B) // aborts A
+    })
+
+    expect(await cancelled).toBe('Checking was interrupted. Please try again.')
+  })
+
   it('does not reuse a request that was just aborted', async () => {
     server.use(
       http.get(`${API_BASE_URL}/corporation-number/:number`, async () => {
