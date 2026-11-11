@@ -19,5 +19,9 @@ export const corporationNumberQuery = (value: string) => {
     // check retries.
     staleTime: Infinity,
     gcTime: Infinity,
+    // By default TanStack Query pauses requests while the browser reports it is
+    // offline, which would leave the check (and submit) waiting with no
+    // message. Always try, so an offline check fails and says so.
+    networkMode: 'always',
   })
 }

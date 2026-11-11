@@ -12,7 +12,8 @@ What a reviewer of this repo should check. Style is the linter's job, so don't r
 
 See [docs/incidents.md](docs/incidents.md).
 
-- **Use a well-tested library for caching, request sharing and cancellation; don't hand-roll it.** A hand-written version of the corporation check produced a new async bug in every review cycle until it was replaced with TanStack Query.
+- **Use a well-tested library for caching and request sharing; don't hand-roll it.** A hand-written version of the corporation check produced a new async bug in every review cycle until it was replaced with TanStack Query.
+- **When adopting a library, check its defaults against the behaviour it replaces.** TanStack Query pauses requests while the browser is offline by default; the hand-written check failed at once with a message, so the query sets `networkMode: 'always'`.
 - **Never cancel a shared or cached request on behalf of one caller.** Other callers may be waiting on it and would get a cancelled result. To ignore an outdated answer, discard it where it's used; react-hook-form already does this for blur results.
 - **Check interactions between async paths**, not only each path alone: blur + submit, cache hit + request in flight, the value changing during a check, consecutive submits.
 - **Tests wait for an observable outcome**, never a fixed delay. To hold a mocked response, use a gate the test opens (`src/test/gate.ts`, `holdCorporationChecks`). To assert that a late answer is ignored, wait for `waitForCheckHandled`. `npm run lint` enforces this (`test-rules/no-fixed-delay`).

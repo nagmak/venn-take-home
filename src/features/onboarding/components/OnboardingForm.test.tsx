@@ -1,7 +1,8 @@
+import { onlineManager } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import { createGate } from '../../../test/gate'
 import { CORPORATION_URL, holdCorporationChecks, PROFILE_URL } from '../../../test/mocks/corporationApi'
 import { VALID_CORPORATION_NUMBERS } from '../../../test/mocks/handlers'
@@ -259,6 +260,21 @@ describe('OnboardingForm', () => {
     await user.click(field('Corporation Number'))
     await user.tab()
     await waitFor(() => expect(field('Corporation Number')).not.toHaveAccessibleDescription())
+  })
+
+  it('asks the user to retry, instead of waiting, when the browser is offline', async () => {
+    onlineManager.setOnline(false)
+    onTestFinished(() => onlineManager.setOnline(true))
+    server.use(http.get(CORPORATION_URL, () => HttpResponse.error()))
+    const user = userEvent.setup()
+    renderForm()
+
+    await typeAndBlur(user, 'Corporation Number', VALID)
+    await waitFor(() =>
+      expect(field('Corporation Number')).toHaveAccessibleDescription(
+        'Could not verify corporation number. Please try again.',
+      ),
+    )
   })
 
   it('submits the trimmed values and confirms success', async () => {

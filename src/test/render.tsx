@@ -1,14 +1,26 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, waitFor } from '@testing-library/react'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { expect } from 'vitest'
 import { corporationNumberQuery } from '../features/onboarding/corporationNumberQuery'
 
-/** Renders with a fresh TanStack Query client, so no cached answer leaks between tests. */
+/**
+ * A fresh TanStack Query client and a wrapper that provides it, so no cached
+ * answer leaks between tests. Options come from the query definitions, as in
+ * the app.
+ */
+export function createQueryClientWrapper() {
+  const queryClient = new QueryClient()
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return { queryClient, wrapper }
+}
+
+/** Renders `ui` with a fresh TanStack Query client. */
 export function renderWithQueryClient(ui: ReactElement) {
-  // gcTime: Infinity schedules no cache clean-up timers that would outlive the test.
-  const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } })
-  const rendered = render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  const { queryClient, wrapper } = createQueryClientWrapper()
+  const rendered = render(ui, { wrapper })
 
   /**
    * Waits until the app has handled the answer for `number`: its check has

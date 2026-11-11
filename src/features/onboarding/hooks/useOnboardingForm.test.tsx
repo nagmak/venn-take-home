@@ -1,11 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { http } from 'msw'
-import type { ReactNode } from 'react'
 import { expect, it } from 'vitest'
 import { CORPORATION_URL } from '../../../test/mocks/corporationApi'
 import { VALID_CORPORATION_NUMBERS } from '../../../test/mocks/handlers'
 import { server } from '../../../test/mocks/server'
+import { createQueryClientWrapper } from '../../../test/render'
 import type { OnboardingFormValues } from '../onboardingSchema'
 import { useOnboardingForm } from './useOnboardingForm'
 
@@ -19,10 +18,7 @@ it('checks the same corporation number it submits, even if the value changes mid
       // Fall through to the default handler.
     }),
   )
-  const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } })
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+  const { wrapper } = createQueryClientWrapper()
   const { result } = renderHook(() => useOnboardingForm(), { wrapper })
   act(() => {
     // Register the fields as the form's inputs do, so submit validates them.
