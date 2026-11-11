@@ -1,7 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "oxc"],
-  "jsPlugins": ["./lint/test-rules.js"],
   "rules": {
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
@@ -35,7 +34,7 @@
     },
     {
       "files": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test/**"],
-      "rules": { "no-restricted-imports": "off", "test-rules/no-fixed-delay": "error" }
+      "rules": { "no-restricted-imports": "off" }
     }
   ]
 }

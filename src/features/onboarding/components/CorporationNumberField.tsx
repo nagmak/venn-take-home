@@ -9,11 +9,7 @@ type CorporationNumberFieldProps = ComponentProps<typeof TextField> & {
   control: Control<OnboardingFormValues>
 }
 
-/**
- * The corporation number field. It shows "Checking…" while the number it
- * currently holds is being checked. It watches its own value, so typing
- * re-renders only this field, not the whole form.
- */
+/** Shows "Checking…" while the number in the field is being checked with the API. */
 export function CorporationNumberField({ control, error, ...props }: CorporationNumberFieldProps) {
   const value = useWatch({ control, name: 'corporationNumber' })
   const checking = useIsFetching({ queryKey: corporationNumberQuery(value).queryKey, exact: true }) > 0

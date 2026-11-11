@@ -11,11 +11,7 @@ export type SubmitStatus =
   | { state: 'success' }
   | { state: 'error'; message: string }
 
-/**
- * Returns the form's submit handler. Each attempt clears the previous result
- * first, before validation runs, so an old message never shows during a new
- * attempt.
- */
+/** Returns the form's submit handler and the result of the last attempt. */
 export function useOnboardingSubmit(handleSubmit: UseFormHandleSubmit<OnboardingFormValues>) {
   const [status, setStatus] = useState<SubmitStatus>({ state: 'idle' })
 

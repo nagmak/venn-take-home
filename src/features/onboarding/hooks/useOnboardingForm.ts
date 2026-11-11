@@ -30,14 +30,11 @@ async function checkCorporationNumber(queryClient: QueryClient, value: string) {
 export function useOnboardingForm() {
   const queryClient = useQueryClient()
 
-  // Runs the zod schema, then checks the corporation number with the API, but
-  // only when that field is being validated (its blur, or submit) and its
-  // format is already valid.
+  // Runs the schema, then checks the corporation number with the API when that
+  // field is being validated and its format is valid.
   const resolver = useMemo<Resolver<OnboardingFormValues>>(
     () => async (liveValues, context, options) => {
-      // react-hook-form passes its live values object. Copy it, so the number
-      // checked is the number parsed and submitted even if a field changes
-      // during the check.
+      // Copy react-hook-form's live values, so the number checked is the one submitted.
       const values = { ...liveValues }
       const result = await schemaResolver(values, context, options)
       if (!options.names?.includes('corporationNumber') || result.errors.corporationNumber) return result

@@ -8,8 +8,5 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   cleanup()
   server.resetHandlers()
-  // Defensive: no test adds server.events listeners today, but one that did
-  // would otherwise leak into later tests.
-  server.events.removeAllListeners()
 })
 afterAll(() => server.close())
