@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { API_BASE_URL } from '../api/config'
 
 // Test fixture only (from the brief): the app must validate against the API, never this list.
-export const VALID_CORPORATION_NUMBERS = [
+const VALID_CORPORATION_NUMBERS = [
   '826417395',
   '158739264',
   '123456789',
