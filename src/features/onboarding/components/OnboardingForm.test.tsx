@@ -162,6 +162,31 @@ describe('OnboardingForm', () => {
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
   })
 
+  it('does not submit a corporation number whose check was cancelled', async () => {
+    let posts = 0
+    server.use(
+      http.get(CORPORATION_URL, async ({ params }) => {
+        if (params.number === VALID_CORPORATION_NUMBERS[0]) await delay(200)
+        // Fall through to the default handler.
+      }),
+      http.post(PROFILE_URL, () => {
+        posts++
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    // Submit starts a (slow) check for the first number...
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    // ...which is cancelled when the field changes and is checked again.
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[1])
+
+    await delay(300)
+    expect(posts).toBe(0)
+  })
+
   it('checks each corporation number with the API only once', async () => {
     let apiCalls = 0
     server.use(

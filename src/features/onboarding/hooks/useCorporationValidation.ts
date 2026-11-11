@@ -38,10 +38,10 @@ export function useCorporationValidation() {
       },
       () => {
         checks.current.delete(corporationNumber)
-        // An aborted check belongs to a value the user has already changed;
-        // react-hook-form discards results for stale values, so it's ignored.
-        if (controller.signal.aborted) return undefined
         settle('error')
+        // Never treat an unverified number as valid, including when the check
+        // was cancelled: on blur react-hook-form ignores the result (the value
+        // changed), and a submit sharing this check is blocked.
         return UNAVAILABLE_MESSAGE
       },
     )
