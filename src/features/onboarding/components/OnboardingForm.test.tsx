@@ -209,6 +209,23 @@ describe('OnboardingForm', () => {
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
   })
 
+  it('cancels a pending corporation check when the form unmounts', async () => {
+    let aborted = false
+    server.use(
+      http.get(CORPORATION_URL, async ({ request }) => {
+        await delay(200)
+        aborted = request.signal.aborted
+      }),
+    )
+    const user = userEvent.setup()
+    const { unmount } = render(<OnboardingForm />)
+
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    unmount()
+
+    await waitFor(() => expect(aborted).toBe(true))
+  })
+
   it('checks each corporation number with the API only once', async () => {
     let apiCalls = 0
     server.use(

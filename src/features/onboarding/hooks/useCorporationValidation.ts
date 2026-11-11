@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { validateCorporationNumber } from '../../../api/onboarding'
 
 const UNAVAILABLE_MESSAGE = 'Could not verify corporation number. Please try again.'
@@ -18,6 +18,9 @@ export function useCorporationValidation() {
   const checks = useRef(new Map<string, Promise<string | undefined>>())
   const inFlight = useRef<InFlight | null>(null)
   const [isChecking, setIsChecking] = useState(false)
+
+  // Cancel a pending request if the form goes away.
+  useEffect(() => () => inFlight.current?.controller.abort(), [])
 
   const check = useCallback((corporationNumber: string) => {
     const stopInFlight = () => {
