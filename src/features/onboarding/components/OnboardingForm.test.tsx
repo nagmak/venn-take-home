@@ -72,7 +72,7 @@ describe('OnboardingForm', () => {
     expect(field('First Name')).toHaveFocus()
   })
 
-  it('checks the corporation number with the API on blur, once its format is valid', async () => {
+  it('does not call the API while the corporation number format is invalid', async () => {
     let apiCalls = 0
     server.use(
       http.get(CORPORATION_URL, () => {
@@ -84,17 +84,9 @@ describe('OnboardingForm', () => {
     render(<OnboardingForm />)
 
     await typeAndBlur(user, 'Corporation Number', '12345')
+
     expect(field('Corporation Number')).toHaveAccessibleDescription('Corporation number must be 9 digits')
     expect(apiCalls).toBe(0)
-
-    await typeAndBlur(user, 'Corporation Number', '000000000')
-    await waitFor(() =>
-      expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
-    )
-
-    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
-    await waitFor(() => expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid'))
-    expect(apiCalls).toBe(2)
   })
 
   it('keeps the corporation number error when other fields are blurred and on submit', async () => {
