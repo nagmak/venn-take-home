@@ -1,0 +1,2 @@
+# Builds read env vars from Vercel, never a local .env.
+.env
