@@ -230,6 +230,41 @@ describe('OnboardingForm', () => {
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Invalid phone number'))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid phone number'))
+  })
+
+  it('asks the user to check their connection when the submission cannot be sent', async () => {
+    server.use(http.post(PROFILE_URL, () => HttpResponse.error()))
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Network error. Check your connection and try again.'),
+    )
+  })
+
+  it('shows "Submitting…" while sending and sends only one request on a double click', async () => {
+    let posts = 0
+    server.use(
+      http.post(PROFILE_URL, async () => {
+        posts++
+        await delay(100)
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.dblClick(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByRole('button', { name: 'Submitting…' })).toBeDisabled()
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+    expect(posts).toBe(1)
   })
 })

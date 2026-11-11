@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { Button } from '../../../components/Button/Button'
 import { TextField } from '../../../components/TextField/TextField'
 import styles from './OnboardingForm.module.css'
@@ -8,7 +9,7 @@ import {
   type OnboardingFormValues,
 } from '../onboardingSchema'
 import { useOnboardingForm } from '../hooks/useOnboardingForm'
-import { useOnboardingSubmit, type SubmitStatus } from '../hooks/useOnboardingSubmit'
+import { useOnboardingSubmit } from '../hooks/useOnboardingSubmit'
 
 type FieldConfig = {
   name: keyof OnboardingFormValues
@@ -17,6 +18,7 @@ type FieldConfig = {
   fullWidth?: boolean
   maxLength?: number
   autoComplete?: string
+  inputMode?: ComponentProps<'input'>['inputMode']
 }
 
 const FIELDS: readonly FieldConfig[] = [
@@ -41,6 +43,7 @@ const FIELDS: readonly FieldConfig[] = [
     fullWidth: true,
     maxLength: PHONE_MAX_LENGTH,
     autoComplete: 'tel',
+    inputMode: 'tel',
   },
   {
     name: 'corporationNumber',
@@ -48,13 +51,11 @@ const FIELDS: readonly FieldConfig[] = [
     type: 'text',
     fullWidth: true,
     maxLength: CORPORATION_NUMBER_LENGTH,
+    inputMode: 'numeric',
   },
 ]
 
 const SUCCESS_MESSAGE = 'Thanks! Your details have been submitted.'
-
-const statusMessage = (status: SubmitStatus) =>
-  status.state === 'success' ? SUCCESS_MESSAGE : status.state === 'error' ? status.message : undefined
 
 export function OnboardingForm() {
   const {
@@ -75,7 +76,7 @@ export function OnboardingForm() {
         Onboarding Form
       </h1>
       <div className={styles.fields}>
-        {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete }) => {
+        {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete, inputMode }) => {
           const checking = name === 'corporationNumber' && corporationStatus === 'checking'
           return (
             <TextField
@@ -85,6 +86,7 @@ export function OnboardingForm() {
               type={type}
               maxLength={maxLength}
               autoComplete={autoComplete}
+              inputMode={inputMode}
               error={checking ? undefined : errors[name]?.message}
               hint={checking ? 'Checking…' : undefined}
               className={fullWidth ? styles.fullWidth : undefined}
@@ -93,23 +95,29 @@ export function OnboardingForm() {
         })}
       </div>
       <Button type="submit" disabled={isSubmitting}>
-        Submit
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path
-            d="M3 8h10M9 4l4 4-4 4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        {isSubmitting ? (
+          'Submitting…'
+        ) : (
+          <>
+            Submit
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M3 8h10M9 4l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </>
+        )}
       </Button>
-      {/* Always mounted so screen readers announce the result when it appears. */}
-      <p
-        className={status.state === 'error' ? styles.submitError : styles.submitSuccess}
-        role="status"
-      >
-        {statusMessage(status)}
+      {/* Always mounted so screen readers announce results as they appear. */}
+      <p className={styles.submitError} role="alert">
+        {status.state === 'error' ? status.message : undefined}
+      </p>
+      <p className={styles.submitSuccess} role="status">
+        {status.state === 'success' ? SUCCESS_MESSAGE : undefined}
       </p>
     </form>
   )
