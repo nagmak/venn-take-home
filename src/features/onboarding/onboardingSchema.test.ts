@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { onboardingSchema, type OnboardingFormValues } from './schema'
+import { onboardingSchema, type OnboardingFormValues } from './onboardingSchema'
 
 // Example request from the brief.
 const valid: OnboardingFormValues = {

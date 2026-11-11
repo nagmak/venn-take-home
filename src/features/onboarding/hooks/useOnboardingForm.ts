@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
-import { onboardingSchema, type OnboardingFormValues } from '../schema'
+import { onboardingSchema, type OnboardingFormValues } from '../onboardingSchema'
 import { useCorporationValidation } from './useCorporationValidation'
 
 const DEFAULT_VALUES: OnboardingFormValues = {

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { ApiError } from '../../../api/client'
 import { submitProfileDetails } from '../../../api/onboarding'
-import type { OnboardingFormValues } from '../schema'
+import type { OnboardingFormValues } from '../onboardingSchema'
 
 const GENERIC_ERROR = 'Something went wrong. Please try again.'
 

@@ -6,7 +6,7 @@ import {
   NAME_MAX_LENGTH,
   PHONE_MAX_LENGTH,
   type OnboardingFormValues,
-} from '../schema'
+} from '../onboardingSchema'
 import { useOnboardingForm } from '../hooks/useOnboardingForm'
 import { useOnboardingSubmit, type SubmitStatus } from '../hooks/useOnboardingSubmit'
 
