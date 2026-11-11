@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { API_BASE_URL } from '../api/config'
+import { API_BASE_URL } from '../../api/config'
 
 // Test fixture only (from the brief): the app must validate against the API, never this list.
 const VALID_CORPORATION_NUMBERS = [
