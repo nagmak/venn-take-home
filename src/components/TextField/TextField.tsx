@@ -11,7 +11,7 @@ type TextFieldProps = Omit<ComponentProps<'input'>, 'id'> & {
 export function TextField({ label, error, hint, className, ...inputProps }: TextFieldProps) {
   const inputId = useId()
   const messageId = `${inputId}-message`
-  const message = error ?? hint
+  const message = error || hint
 
   return (
     <div className={[styles.field, className].filter(Boolean).join(' ')}>

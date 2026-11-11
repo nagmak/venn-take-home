@@ -11,6 +11,14 @@ describe('TextField', () => {
     expect(input).not.toHaveAttribute('aria-describedby')
   })
 
+  it('shows the hint, not invalid, when the error is empty', () => {
+    render(<TextField label="Corporation Number" error="" hint="Checking…" />)
+    const input = screen.getByRole('textbox', { name: 'Corporation Number' })
+
+    expect(input).not.toHaveAttribute('aria-invalid')
+    expect(input).toHaveAccessibleDescription('Checking…')
+  })
+
   it('marks the input invalid, describes it with the error, and puts the error in a live region', () => {
     render(<TextField label="First Name" error="First name is required" />)
     const input = screen.getByRole('textbox', { name: 'First Name' })

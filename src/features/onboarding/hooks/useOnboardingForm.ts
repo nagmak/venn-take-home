@@ -1,8 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
+import { corporationNumberQuery } from '../corporationNumberQuery'
 import { onboardingSchema, type OnboardingFormValues } from '../onboardingSchema'
-import { useCorporationValidation } from './useCorporationValidation'
+
+const UNAVAILABLE_MESSAGE = 'Could not verify corporation number. Please try again.'
 
 const DEFAULT_VALUES: OnboardingFormValues = {
   firstName: '',
@@ -13,34 +16,44 @@ const DEFAULT_VALUES: OnboardingFormValues = {
 
 const schemaResolver = zodResolver(onboardingSchema)
 
-export function useOnboardingForm() {
-  const { check: checkCorporationNumber, status: corporationStatus } = useCorporationValidation()
+/** Resolves to the error message for a corporation number, or undefined if it's valid. */
+async function checkCorporationNumber(queryClient: QueryClient, value: string) {
+  try {
+    const result = await queryClient.fetchQuery(corporationNumberQuery(value))
+    return result.valid ? undefined : result.message
+  } catch {
+    // Never treat an unverified number as valid.
+    return UNAVAILABLE_MESSAGE
+  }
+}
 
-  // Runs the zod schema, then checks the corporation number with the API, but
-  // only when that field is being validated (its blur, or submit) and its
-  // format is already valid.
+export function useOnboardingForm() {
+  const queryClient = useQueryClient()
+
+  // Runs the schema, then checks the corporation number with the API when that
+  // field is being validated and its format is valid.
   const resolver = useMemo<Resolver<OnboardingFormValues>>(
-    () => async (values, context, options) => {
+    () => async (liveValues, context, options) => {
+      // Copy react-hook-form's live values, so the number checked is the one submitted.
+      const values = { ...liveValues }
       const result = await schemaResolver(values, context, options)
       if (!options.names?.includes('corporationNumber') || result.errors.corporationNumber) return result
 
-      const message = await checkCorporationNumber(values.corporationNumber.trim())
+      const message = await checkCorporationNumber(queryClient, values.corporationNumber)
       if (!message) return result
       return {
         values: {},
         errors: { ...result.errors, corporationNumber: { type: 'api', message } },
       }
     },
-    [checkCorporationNumber],
+    [queryClient],
   )
 
-  const form = useForm<OnboardingFormValues>({
+  return useForm<OnboardingFormValues>({
     resolver,
     mode: 'onBlur',
     // Re-validate on blur after a failed submit too, so the API isn't called per keystroke.
     reValidateMode: 'onBlur',
     defaultValues: DEFAULT_VALUES,
   })
-
-  return { ...form, corporationStatus }
 }

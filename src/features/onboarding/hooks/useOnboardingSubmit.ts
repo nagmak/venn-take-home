@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type BaseSyntheticEvent } from 'react'
+import type { UseFormHandleSubmit } from 'react-hook-form'
 import { ApiError, NETWORK_ERROR_STATUS } from '../../../api/client'
 import { submitProfileDetails } from '../../../api/onboarding'
 import type { OnboardingFormValues } from '../onboardingSchema'
@@ -10,11 +11,11 @@ export type SubmitStatus =
   | { state: 'success' }
   | { state: 'error'; message: string }
 
-export function useOnboardingSubmit() {
+/** Returns the form's submit handler and the result of the last attempt. */
+export function useOnboardingSubmit(handleSubmit: UseFormHandleSubmit<OnboardingFormValues>) {
   const [status, setStatus] = useState<SubmitStatus>({ state: 'idle' })
 
-  const submit = useCallback(async (values: OnboardingFormValues) => {
-    setStatus({ state: 'idle' })
+  const send = useCallback(async (values: OnboardingFormValues) => {
     try {
       await submitProfileDetails(values)
       setStatus({ state: 'success' })
@@ -26,5 +27,13 @@ export function useOnboardingSubmit() {
     }
   }, [])
 
-  return { status, submit }
+  const onSubmit = useCallback(
+    (event?: BaseSyntheticEvent) => {
+      setStatus({ state: 'idle' })
+      return handleSubmit(send)(event)
+    },
+    [handleSubmit, send],
+  )
+
+  return { status, onSubmit }
 }

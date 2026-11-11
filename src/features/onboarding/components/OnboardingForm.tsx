@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { Button } from '../../../components/Button/Button'
 import { TextField } from '../../../components/TextField/TextField'
+import { CorporationNumberField } from './CorporationNumberField'
 import styles from './OnboardingForm.module.css'
 import {
   CORPORATION_NUMBER_LENGTH,
@@ -61,11 +62,11 @@ const FIX_FIELDS_MESSAGE = 'Please fix the highlighted fields.'
 export function OnboardingForm() {
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting, isSubmitted, isSubmitSuccessful },
-    corporationStatus,
   } = useOnboardingForm()
-  const { status, submit } = useOnboardingSubmit()
+  const { status, onSubmit } = useOnboardingSubmit(handleSubmit)
   // After a submit that failed validation; clears once every field is fixed.
   const showFixMessage = isSubmitted && !isSubmitSuccessful && Object.keys(errors).length > 0
 
@@ -73,27 +74,29 @@ export function OnboardingForm() {
     <form
       className={styles.card}
       aria-labelledby="onboarding-form-title"
-      onSubmit={handleSubmit(submit)}
+      onSubmit={onSubmit}
     >
       <h1 id="onboarding-form-title" className={styles.title}>
         Onboarding Form
       </h1>
       <div className={styles.fields}>
         {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete, inputMode }) => {
-          const checking = name === 'corporationNumber' && corporationStatus === 'checking'
-          return (
-            <TextField
-              key={name}
-              {...register(name)}
-              label={label}
-              type={type}
-              maxLength={maxLength}
-              autoComplete={autoComplete}
-              inputMode={inputMode}
-              error={checking ? undefined : errors[name]?.message}
-              hint={checking ? 'Checking…' : undefined}
-              className={fullWidth ? styles.fullWidth : undefined}
-            />
+          const props = {
+            ...register(name),
+            label,
+            type,
+            maxLength,
+            autoComplete,
+            inputMode,
+            // Locked while submitting, so the form shows exactly what is being sent.
+            readOnly: isSubmitting,
+            error: errors[name]?.message,
+            className: fullWidth ? styles.fullWidth : undefined,
+          }
+          return name === 'corporationNumber' ? (
+            <CorporationNumberField key={name} control={control} {...props} />
+          ) : (
+            <TextField key={name} {...props} />
           )
         })}
       </div>
