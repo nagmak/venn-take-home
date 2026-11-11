@@ -8,7 +8,7 @@ Found by two `/code-review` runs after PR #9 was merged. Fixed on `fix/review-fi
 
 | Bug | Caused by | Fixed by |
 | --- | --- | --- |
-| A cancelled corporation check counted as valid, so a submit sharing it could POST a number the API never confirmed | `4a1b039` | `0fa634d`, `8c9e045` |
+| A cancelled corporation check counted as valid, so a submit sharing it could POST a number the API never confirmed | `4a1b039` | `0fa634d`, `8c9e045`; root cause removed in `b46e15c` (checks are no longer cancelled when another number is checked) |
 | Returning to an already-checked number left "Checking…" showing and hid the field's error | `4a1b039` | `2401847` |
 | "Checking…" replaced the field's real error when the value changed to an empty or badly formatted number while another check was in flight | `4a1b039` | `5565546` |
 | After a success, a submit that failed validation showed the success and fix-fields messages together | `122c766`, `5ad17a8` | `f35263f` |
@@ -19,4 +19,6 @@ Found by two `/code-review` runs after PR #9 was merged. Fixed on `fix/review-fi
 
 **Which check should have caught it:** a fresh-context code review before merging. PRs #8 and #9 were Medium tier, which calls for an AI review pass before merge; the reviews ran only after PR #9 was merged. The tests covered each behaviour on its own path (blur, submit), but not the combinations: a check cancelled while a submit shared it, a cache hit while another number was in flight, a value changing during a pending check, and consecutive submits. One test relied on timing (`aborts a stale check…`) and was flaky until `32c03c5`.
 
-**Missing check to add:** run `/code-review` on every Medium or High PR before it merges, and add regression tests for interactions between async paths (blur + submit, cache + in-flight request, value changes during a check, consecutive submits). Tests should wait for an observable outcome, never a fixed delay.
+**Missing check to add:** run `/code-review` on every Medium or High PR before it merges, and add regression tests for interactions between async paths (blur + submit, cache + in-flight request, value changes during a check, consecutive submits).
+
+**Added:** [REVIEW.md](../REVIEW.md) records the rules from these bugs (never cancel a shared promise for one caller; check async interactions). The lint rule `test-rules/no-fixed-delay` makes tests wait for an observable outcome instead of a fixed delay.

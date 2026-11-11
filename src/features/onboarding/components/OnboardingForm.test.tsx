@@ -148,10 +148,9 @@ describe('OnboardingForm', () => {
     const staleReleased = new Promise<void>((resolve) => (releaseStale = resolve))
     let staleAnswered!: () => void
     const staleAnswer = new Promise<void>((resolve) => (staleAnswered = resolve))
-    const onResponse = ({ request }: { request: Request }) => {
+    server.events.on('response:mocked', ({ request }) => {
       if (request.url.endsWith(stale)) staleAnswered()
-    }
-    server.events.on('response:mocked', onResponse)
+    })
     server.use(
       http.get(CORPORATION_URL, async ({ params }) => {
         // The stale number is answered only once the field holds the new one, and
@@ -170,7 +169,6 @@ describe('OnboardingForm', () => {
 
     releaseStale()
     await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
-    server.events.removeListener('response:mocked', onResponse)
     expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
   })
