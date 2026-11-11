@@ -24,7 +24,11 @@ export function useCorporationValidation() {
 
   const check = useCallback((corporationNumber: string) => {
     const stopInFlight = () => {
-      inFlight.current?.controller.abort()
+      if (inFlight.current) {
+        inFlight.current.controller.abort()
+        // Drop it now, not when the rejection lands, so a check for this number in the meantime starts fresh.
+        checks.current.delete(inFlight.current.corporationNumber)
+      }
       inFlight.current = null
       setCheckingNumber(null)
     }
