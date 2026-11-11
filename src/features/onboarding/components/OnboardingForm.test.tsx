@@ -8,6 +8,7 @@ import { server } from '../../../test/mocks/server'
 import { OnboardingForm } from './OnboardingForm'
 
 const CORPORATION_URL = `${API_BASE_URL}/corporation-number/:number`
+const PROFILE_URL = `${API_BASE_URL}/profile-details`
 
 const field = (label: string) => screen.getByRole('textbox', { name: label })
 
@@ -15,6 +16,13 @@ const typeAndBlur = async (user: UserEvent, label: string, value: string) => {
   await user.clear(field(label))
   await user.type(field(label), value)
   await user.tab()
+}
+
+const fillValidForm = async (user: UserEvent) => {
+  await user.type(field('First Name'), '  Hello ')
+  await user.type(field('Last Name'), 'World')
+  await user.type(field('Phone Number'), '+13062776103')
+  await user.type(field('Corporation Number'), VALID_CORPORATION_NUMBERS[0])
 }
 
 describe('OnboardingForm', () => {
@@ -101,5 +109,41 @@ describe('OnboardingForm', () => {
         'Could not verify corporation number. Please try again.',
       ),
     )
+  })
+
+  it('submits the trimmed values and confirms success', async () => {
+    let body: unknown
+    server.use(
+      http.post(PROFILE_URL, async ({ request }) => {
+        body = await request.json()
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+    expect(body).toEqual({
+      firstName: 'Hello',
+      lastName: 'World',
+      phone: '+13062776103',
+      corporationNumber: VALID_CORPORATION_NUMBERS[0],
+    })
+  })
+
+  it('shows the API message when the submission is rejected', async () => {
+    server.use(http.post(PROFILE_URL, () => HttpResponse.json({ message: 'Invalid phone number' }, { status: 400 })))
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Invalid phone number'))
   })
 })
