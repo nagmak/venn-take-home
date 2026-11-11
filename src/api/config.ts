@@ -1,1 +1,7 @@
-export const API_BASE_URL = 'https://fe-hometask-api.qa.vault.tryvault.com'
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+
+if (!apiBaseUrl) {
+  throw new Error('VITE_API_BASE_URL is not set. Copy .env.example to .env.')
+}
+
+export const API_BASE_URL = apiBaseUrl

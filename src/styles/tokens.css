@@ -1,0 +1,14 @@
+:root {
+  --color-text: #000;
+  --color-border: #d9d9d9;
+  --color-focus: #000;
+  --color-error: #e00000;
+  --color-surface: #fff;
+  --color-primary: #000;
+  --color-on-primary: #fff;
+
+  --radius-md: 8px;
+  --control-height: 46px;
+  --space-2: 8px;
+  --space-4: 16px;
+}
