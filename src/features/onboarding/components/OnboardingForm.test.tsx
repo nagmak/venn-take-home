@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { API_BASE_URL } from '../../../api/config'
 import { VALID_CORPORATION_NUMBERS } from '../../../test/mocks/handlers'
@@ -59,7 +59,7 @@ describe('OnboardingForm', () => {
     expect(field(label)).toHaveAttribute('maxLength', String(limit))
   })
 
-  it('on submit, shows an error under every empty field and focuses the first', async () => {
+  it('on submit, shows an error under every empty field, focuses the first and asks to fix them', async () => {
     const user = userEvent.setup()
     render(<OnboardingForm />)
 
@@ -70,9 +70,17 @@ describe('OnboardingForm', () => {
     expect(field('Phone Number')).toHaveAccessibleDescription('Phone number is required')
     expect(field('Corporation Number')).toHaveAccessibleDescription('Corporation number is required')
     expect(field('First Name')).toHaveFocus()
+    expect(screen.getByRole('alert')).toHaveTextContent('Please fix the highlighted fields.')
+
+    await typeAndBlur(user, 'First Name', 'Hello')
+    await typeAndBlur(user, 'Last Name', 'World')
+    await typeAndBlur(user, 'Phone Number', '+13062776103')
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement())
   })
 
-  it('checks the corporation number with the API on blur, once its format is valid', async () => {
+  it('does not call the API while the corporation number format is invalid', async () => {
     let apiCalls = 0
     server.use(
       http.get(CORPORATION_URL, () => {
@@ -84,17 +92,95 @@ describe('OnboardingForm', () => {
     render(<OnboardingForm />)
 
     await typeAndBlur(user, 'Corporation Number', '12345')
+
     expect(field('Corporation Number')).toHaveAccessibleDescription('Corporation number must be 9 digits')
     expect(apiCalls).toBe(0)
+  })
+
+  it('keeps the corporation number error when other fields are blurred and on submit', async () => {
+    let posts = 0
+    server.use(
+      http.post(PROFILE_URL, () => {
+        posts++
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
 
     await typeAndBlur(user, 'Corporation Number', '000000000')
     await waitFor(() =>
       expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
     )
 
+    await typeAndBlur(user, 'First Name', 'Ada')
+    await typeAndBlur(user, 'Last Name', 'Lovelace')
+    await typeAndBlur(user, 'Phone Number', '+13062776103')
+    expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number')
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() =>
+      expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
+    )
+    expect(posts).toBe(0)
+  })
+
+  it('shows "Checking…" while the corporation number is being checked', async () => {
+    server.use(
+      http.get(CORPORATION_URL, async () => {
+        await delay(100)
+        // Fall through to the default handler.
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
     await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
-    await waitFor(() => expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid'))
-    expect(apiCalls).toBe(2)
+
+    expect(await screen.findByText('Checking…')).toBeInTheDocument()
+    expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
+    await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
+  })
+
+  it('aborts a stale check so its late response cannot override the current value', async () => {
+    let staleAborted = false
+    server.use(
+      http.get(CORPORATION_URL, async ({ params, request }) => {
+        if (params.number !== '000000000') return
+        await delay(200)
+        staleAborted = request.signal.aborted
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await typeAndBlur(user, 'Corporation Number', '000000000')
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+
+    await waitFor(() => expect(staleAborted).toBe(true))
+    expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
+    expect(field('Corporation Number')).not.toHaveAccessibleDescription()
+  })
+
+  it('checks each corporation number with the API only once', async () => {
+    let apiCalls = 0
+    server.use(
+      http.get(CORPORATION_URL, () => {
+        apiCalls++
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.tab()
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+    expect(apiCalls).toBe(1)
   })
 
   it('asks the user to retry when the corporation number cannot be checked', async () => {
@@ -144,6 +230,41 @@ describe('OnboardingForm', () => {
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Invalid phone number'))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid phone number'))
+  })
+
+  it('asks the user to check their connection when the submission cannot be sent', async () => {
+    server.use(http.post(PROFILE_URL, () => HttpResponse.error()))
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Network error. Check your connection and try again.'),
+    )
+  })
+
+  it('shows "Submitting…" while sending and sends only one request on a double click', async () => {
+    let posts = 0
+    server.use(
+      http.post(PROFILE_URL, async () => {
+        posts++
+        await delay(100)
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.dblClick(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByRole('button', { name: 'Submitting…' })).toBeDisabled()
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+    expect(posts).toBe(1)
   })
 })

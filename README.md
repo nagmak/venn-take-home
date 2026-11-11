@@ -1,7 +1,10 @@
 # venn-take-home
-Front-end take home task for Venn
 
-## Setup
+An onboarding form where users enter their personal and business details. Fields are validated on blur (the corporation number is also checked against the API) and submitted to the Venn API.
+
+## Getting started
+
+Requires Node 22.12 or later.
 
 ```sh
 npm install
@@ -11,35 +14,46 @@ npm run dev
 
 ## Scripts
 
-- `npm run dev`: start the dev server
-- `npm test`: run the test suite once (`npm run test:watch` to watch)
-- `npm run lint`: lint with oxlint
-- `npm run build`: type-check and build for production
-- `npm run preview`: serve the production build (run `npm run build` first)
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the dev server |
+| `npm test` | Run the tests once (`npm run test:watch` to watch) |
+| `npm run lint` | Lint with oxlint |
+| `npm run build` | Type-check and build for production |
+| `npm run preview` | Serve the production build (run `npm run build` first) |
+
+## Stack
+
+- **Vite + React 19 + TypeScript** (strict mode is TypeScript 7's default)
+- **react-hook-form + zod**: one zod schema defines the validation rules and the form's types
+- **libphonenumber-js**: confirms a phone number is Canadian
+- **CSS Modules** with design tokens as CSS variables
+- **Vitest + React Testing Library + MSW**: integration tests against a mocked network
 
 ## Project structure
 
 ```
 src/
-  api/                  HTTP client, config and endpoint functions (no React, no UI)
-  components/           Shared, feature-agnostic UI; one folder per component
-    Button/             Button.tsx, Button.module.css, Button.test.tsx
-    StepIndicator/
-    TextField/
-  features/             One folder per feature
+  api/                  HTTP client, config and endpoint functions
+  components/           Shared UI, one folder per component (Button, StepIndicator, TextField)
+  features/
     onboarding/
-      components/       The feature's own UI (OnboardingForm)
-      hooks/            The feature's hooks (form state, corporation check, submit)
-      schema.ts         The feature's validation rules and types
-  styles/               Global CSS: design tokens and base styles
-  test/                 Test-only code: setup and MSW mocks
-  App.tsx               Page layout
-  main.tsx              Entry point
+      components/       OnboardingForm
+      hooks/            Form state, corporation number check, submit
+      onboardingSchema.ts  Validation rules and types
+  styles/               Design tokens and global styles
+  test/                 Test setup and MSW mocks
 ```
 
-- `components/` holds UI any feature could reuse; UI that belongs to one feature lives in that feature.
-- Dependencies point one way: `features/` may use `api/` and `components/`, never the reverse.
-- App code never imports from `test/`.
-- Tests sit next to the file they test (`Button.tsx` → `Button.test.tsx`).
+- `components/` is UI any feature could reuse; anything specific to one feature lives in that feature.
+- Imports point one way: `features/` may use `api/` and `components/`, never the reverse, and app code never imports `test/`. `npm run lint` enforces both.
+- Tests sit next to the file they test.
+- Files are named after their main export (`onboardingSchema.ts` exports `onboardingSchema`).
 
-`npm run lint` enforces the dependency and `test/` rules.
+## Linting
+
+The brief lists ESLint as optional. This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter), the Vite template's default, which runs ESLint-compatible rules. `.oxlintrc.json` enables the React hooks and fast-refresh rules, TypeScript correctness rules, and the import boundaries above.
+
+## AI use
+
+Built with Claude Code as a pair programmer. I made the product and architecture decisions and directed each change. Every change was reviewed and verified before merging: tests, deliberately breaking code to confirm the tests catch it, and runs in a real browser against the API.
