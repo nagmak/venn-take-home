@@ -97,6 +97,34 @@ describe('OnboardingForm', () => {
     expect(apiCalls).toBe(2)
   })
 
+  it('keeps the corporation number error when other fields are blurred and on submit', async () => {
+    let posts = 0
+    server.use(
+      http.post(PROFILE_URL, () => {
+        posts++
+        return new HttpResponse(null, { status: 200 })
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await typeAndBlur(user, 'Corporation Number', '000000000')
+    await waitFor(() =>
+      expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
+    )
+
+    await typeAndBlur(user, 'First Name', 'Ada')
+    await typeAndBlur(user, 'Last Name', 'Lovelace')
+    await typeAndBlur(user, 'Phone Number', '+13062776103')
+    expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number')
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() =>
+      expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
+    )
+    expect(posts).toBe(0)
+  })
+
   it('asks the user to retry when the corporation number cannot be checked', async () => {
     server.use(http.get(CORPORATION_URL, () => HttpResponse.error()))
     const user = userEvent.setup()
