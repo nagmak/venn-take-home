@@ -142,26 +142,35 @@ describe('OnboardingForm', () => {
     await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
   })
 
-  it('aborts a stale check so its late response cannot override the current value', async () => {
-    let staleStarted = false
-    let staleAborted = false
+  it("ignores a stale check's late answer once the field holds a different number", async () => {
+    const stale = '000000000'
+    let releaseStale!: () => void
+    const staleReleased = new Promise<void>((resolve) => (releaseStale = resolve))
+    let staleAnswered!: () => void
+    const staleAnswer = new Promise<void>((resolve) => (staleAnswered = resolve))
+    const onResponse = ({ request }: { request: Request }) => {
+      if (request.url.endsWith(stale)) staleAnswered()
+    }
+    server.events.on('response:mocked', onResponse)
     server.use(
-      http.get(CORPORATION_URL, async ({ params, request }) => {
-        if (params.number !== '000000000') return
-        staleStarted = true
-        await delay(200)
-        staleAborted = request.signal.aborted
+      http.get(CORPORATION_URL, async ({ params }) => {
+        // The stale number is answered only once the field holds the new one, and
+        // the new one only after that, so the stale answer has landed by the time
+        // "Checking…" goes away.
+        await (params.number === stale ? staleReleased : staleAnswer)
+        // Fall through to the default handler (the stale number is invalid).
       }),
     )
     const user = userEvent.setup()
     render(<OnboardingForm />)
 
-    await typeAndBlur(user, 'Corporation Number', '000000000')
-    // Wait for the request to reach the server before superseding it.
-    await waitFor(() => expect(staleStarted).toBe(true))
+    await typeAndBlur(user, 'Corporation Number', stale)
     await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    expect(await screen.findByText('Checking…')).toBeInTheDocument()
 
-    await waitFor(() => expect(staleAborted).toBe(true))
+    releaseStale()
+    await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
+    server.events.removeListener('response:mocked', onResponse)
     expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
   })
@@ -239,8 +248,8 @@ describe('OnboardingForm', () => {
 
     await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
 
+    // The cached answer shows straight away; no waiting on the other number's check.
     expect(screen.queryByText('Checking…')).not.toBeInTheDocument()
-    await delay(400)
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
   })
 

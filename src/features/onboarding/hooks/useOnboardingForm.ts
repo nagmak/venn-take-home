@@ -14,7 +14,7 @@ const DEFAULT_VALUES: OnboardingFormValues = {
 const schemaResolver = zodResolver(onboardingSchema)
 
 export function useOnboardingForm() {
-  const { check: checkCorporationNumber, checkingNumber } = useCorporationValidation()
+  const { check: checkCorporationNumber, isChecking } = useCorporationValidation()
 
   // Runs the zod schema, then checks the corporation number with the API, but
   // only when that field is being validated (its blur, or submit) and its
@@ -24,7 +24,7 @@ export function useOnboardingForm() {
       const result = await schemaResolver(values, context, options)
       if (!options.names?.includes('corporationNumber') || result.errors.corporationNumber) return result
 
-      const message = await checkCorporationNumber(values.corporationNumber.trim())
+      const message = await checkCorporationNumber(values.corporationNumber)
       if (!message) return result
       return {
         values: {},
@@ -44,7 +44,7 @@ export function useOnboardingForm() {
 
   // "Checking…" applies only while the field still holds the number being checked.
   const corporationNumber = useWatch({ control: form.control, name: 'corporationNumber' })
-  const isCheckingCorporationNumber = checkingNumber !== null && checkingNumber === corporationNumber.trim()
+  const isCheckingCorporationNumber = isChecking(corporationNumber)
 
   return { ...form, isCheckingCorporationNumber }
 }

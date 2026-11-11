@@ -2,74 +2,68 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { validateCorporationNumber } from '../../../api/onboarding'
 
 const UNAVAILABLE_MESSAGE = 'Could not verify corporation number. Please try again.'
-const CANCELLED_MESSAGE = 'Checking was interrupted. Please try again.'
 
-type InFlight = { corporationNumber: string; controller: AbortController }
+const normalize = (corporationNumber: string) => corporationNumber.trim()
 
 /**
  * Checks corporation numbers against the API. `check` resolves to an error
- * message, or undefined if the number is valid. `checkingNumber` is the number
- * whose request is pending, or null.
+ * message, or undefined if the number is valid. `isChecking(value)` says
+ * whether that value's request is still pending. Both normalize the value the
+ * same way.
  *
- * - Each number is requested once: answers and in-flight checks are shared.
- * - Checking a different number aborts the request still in flight.
+ * - Each number is requested once: answers and pending checks are shared.
+ * - A check is never cancelled by checking another number, so every caller
+ *   gets the real answer. react-hook-form ignores a blur result once the
+ *   field's value has changed, so a slow answer can't land on a newer value.
  * - Failures aren't cached, so the next attempt retries.
  */
 export function useCorporationValidation() {
   const checks = useRef(new Map<string, Promise<string | undefined>>())
-  const inFlight = useRef<InFlight | null>(null)
-  const [checkingNumber, setCheckingNumber] = useState<string | null>(null)
+  const controllers = useRef(new Set<AbortController>())
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set())
 
-  // Cancel a pending request if the form goes away.
-  useEffect(() => () => inFlight.current?.controller.abort(), [])
+  // Cancel pending requests if the form goes away.
+  useEffect(() => {
+    const active = controllers.current
+    return () => active.forEach((controller) => controller.abort())
+  }, [])
 
-  const check = useCallback((corporationNumber: string) => {
-    const stopInFlight = () => {
-      if (inFlight.current) {
-        inFlight.current.controller.abort()
-        // Drop it now, not when the rejection lands, so a check for this number in the meantime starts fresh.
-        checks.current.delete(inFlight.current.corporationNumber)
-      }
-      inFlight.current = null
-      setCheckingNumber(null)
-    }
-
+  const check = useCallback((value: string) => {
+    const corporationNumber = normalize(value)
     const existing = checks.current.get(corporationNumber)
-    if (existing) {
-      // A request for a different number is now stale.
-      if (inFlight.current && inFlight.current.corporationNumber !== corporationNumber) stopInFlight()
-      return existing
+    if (existing) return existing
+
+    const controller = new AbortController()
+    controllers.current.add(controller)
+    setPending((numbers) => new Set(numbers).add(corporationNumber))
+
+    const settle = () => {
+      controllers.current.delete(controller)
+      setPending((numbers) => {
+        const next = new Set(numbers)
+        next.delete(corporationNumber)
+        return next
+      })
     }
 
-    stopInFlight()
-    const request: InFlight = { corporationNumber, controller: new AbortController() }
-    inFlight.current = request
-    setCheckingNumber(corporationNumber)
-
-    const done = () => {
-      if (inFlight.current !== request) return
-      inFlight.current = null
-      setCheckingNumber(null)
-    }
-
-    const pending = validateCorporationNumber(corporationNumber, request.controller.signal).then(
+    const request = validateCorporationNumber(corporationNumber, controller.signal).then(
       (result) => {
-        done()
+        settle()
         return result.valid ? undefined : result.message
       },
       () => {
+        // Nothing else replaces an entry while it's pending, so this is ours.
         checks.current.delete(corporationNumber)
-        done()
-        // Never treat an unverified number as valid. A cancelled check is a
-        // stale blur result (react-hook-form ignores it, as the value changed)
-        // or an unmount; fields are read-only while submitting, so a submit's
-        // check can't be cancelled by an edit.
-        return request.controller.signal.aborted ? CANCELLED_MESSAGE : UNAVAILABLE_MESSAGE
+        settle()
+        // Never treat an unverified number as valid (this includes an unmount's abort).
+        return UNAVAILABLE_MESSAGE
       },
     )
-    checks.current.set(corporationNumber, pending)
-    return pending
+    checks.current.set(corporationNumber, request)
+    return request
   }, [])
 
-  return { check, checkingNumber }
+  const isChecking = useCallback((value: string) => pending.has(normalize(value)), [pending])
+
+  return { check, isChecking }
 }
