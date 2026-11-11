@@ -7,7 +7,11 @@
 //   - msw's delay(), under any import name or as a namespace member
 //   - setTimeout/setInterval with a non-zero delay (a zero-delay timeout only
 //     waits for pending promise callbacks to finish, so it's allowed)
-//   - setTimeout from timers/promises with a non-zero delay
+//   - setTimeout from timers/promises with a non-zero delay, imported by name
+//     or reached through a namespace or default import
+//   - scheduler.wait from timers/promises
+// It can't follow dynamic imports or values passed through variables, so
+// review still checks for fixed waits it misses.
 
 const TIMERS_PROMISES = new Set(['timers/promises', 'node:timers/promises'])
 const GLOBAL_TIMERS = new Set(['setTimeout', 'setInterval'])
@@ -27,6 +31,7 @@ const noFixedDelay = {
     const mswDelayNames = new Set()
     const mswNamespaces = new Set()
     const promiseTimerNames = new Set()
+    const promiseTimerModules = new Set()
 
     return {
       ImportDeclaration(node) {
@@ -37,8 +42,9 @@ const noFixedDelay = {
             else if (specifier.type === 'ImportSpecifier' && specifier.imported.name === 'delay')
               mswDelayNames.add(specifier.local.name)
           } else if (TIMERS_PROMISES.has(source)) {
-            if (specifier.type === 'ImportSpecifier' && specifier.imported.name === 'setTimeout')
-              promiseTimerNames.add(specifier.local.name)
+            if (specifier.type !== 'ImportSpecifier') promiseTimerModules.add(specifier.local.name)
+            else if (specifier.imported.name === 'setTimeout') promiseTimerNames.add(specifier.local.name)
+            else if (specifier.imported.name === 'scheduler') promiseTimerModules.add(specifier.local.name)
           }
         }
       },
@@ -53,12 +59,25 @@ const noFixedDelay = {
           return
         }
 
-        if (callee.type === 'MemberExpression' && callee.object.type === 'Identifier' && !callee.computed) {
+        if (callee.type === 'MemberExpression' && callee.object.type === 'Identifier') {
           const object = callee.object.name
-          const property = callee.property.name
+          const property = callee.computed ? callee.property.value : callee.property.name
           if (mswNamespaces.has(object) && property === 'delay') return report()
           if (GLOBAL_OBJECTS.has(object) && GLOBAL_TIMERS.has(property) && !isZero(args[1])) return report()
+          if (promiseTimerModules.has(object)) {
+            if (property === 'wait') return report()
+            if (property === 'setTimeout' && !isZero(args[0])) return report()
+          }
         }
+        // timers.scheduler.wait(...)
+        if (
+          callee.type === 'MemberExpression' &&
+          callee.object.type === 'MemberExpression' &&
+          callee.object.object.type === 'Identifier' &&
+          promiseTimerModules.has(callee.object.object.name) &&
+          callee.property.name === 'wait'
+        )
+          return report()
       },
     }
   },

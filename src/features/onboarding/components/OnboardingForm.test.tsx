@@ -208,7 +208,7 @@ describe('OnboardingForm', () => {
   it("shows an already-checked number's answer at once, while another number is still being checked", async () => {
     const api = holdCorporationChecks(INVALID)
     const user = userEvent.setup()
-    renderForm()
+    const { waitForCheckHandled } = renderForm()
 
     await typeAndBlur(user, 'Corporation Number', VALID)
     await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
@@ -219,7 +219,9 @@ describe('OnboardingForm', () => {
 
     expect(screen.queryByText('Checking…')).not.toBeInTheDocument()
     expect(field('Corporation Number')).not.toHaveAccessibleDescription()
+    // Let the held check finish inside the test, not during teardown.
     api.release(INVALID)
+    await waitForCheckHandled(INVALID)
   })
 
   it('checks each corporation number with the API only once', async () => {

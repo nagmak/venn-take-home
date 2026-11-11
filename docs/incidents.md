@@ -4,7 +4,7 @@ Bugs that reached `master`, what fixed them, and which check should have caught 
 
 ## 2026-11-11: Corporation check and submit messages (PRs #8 and #9)
 
-Found by two `/code-review` runs after PR #9 was merged. Fixed on `fix/review-findings`.
+Found by two `/code-review` runs after PR #9 was merged. Fixed by the commits below, which reach `master` through `refactor/corporation-check-query`.
 
 | Bug | Caused by | Fixed by |
 | --- | --- | --- |

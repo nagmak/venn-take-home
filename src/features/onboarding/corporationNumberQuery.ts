@@ -14,8 +14,10 @@ export const corporationNumberQuery = (value: string) => {
   return queryOptions({
     queryKey: ['corporationNumber', corporationNumber],
     queryFn: () => validateCorporationNumber(corporationNumber),
-    // A number's answer doesn't change, so it never needs refetching. Failures
-    // aren't cached as answers, so the next check retries.
+    // A number's answer doesn't change, so it is kept for the whole session
+    // and never refetched. Failures aren't cached as answers, so the next
+    // check retries.
     staleTime: Infinity,
+    gcTime: Infinity,
   })
 }
