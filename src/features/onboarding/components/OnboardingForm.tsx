@@ -8,6 +8,7 @@ import {
   type OnboardingFormValues,
 } from '../schema'
 import { useOnboardingForm } from '../hooks/useOnboardingForm'
+import { useOnboardingSubmit, type SubmitStatus } from '../hooks/useOnboardingSubmit'
 
 type FieldConfig = {
   name: keyof OnboardingFormValues
@@ -50,19 +51,24 @@ const FIELDS: readonly FieldConfig[] = [
   },
 ]
 
+const SUCCESS_MESSAGE = 'Thanks! Your details have been submitted.'
+
+const statusMessage = (status: SubmitStatus) =>
+  status.state === 'success' ? SUCCESS_MESSAGE : status.state === 'error' ? status.message : undefined
+
 export function OnboardingForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useOnboardingForm()
+  const { status, submit } = useOnboardingSubmit()
 
   return (
     <form
       className={styles.card}
       aria-labelledby="onboarding-form-title"
-      // Validates every field and shows errors; sending to the API comes next.
-      onSubmit={handleSubmit(() => undefined)}
+      onSubmit={handleSubmit(submit)}
     >
       <h1 id="onboarding-form-title" className={styles.title}>
         Onboarding Form
@@ -81,7 +87,7 @@ export function OnboardingForm() {
           />
         ))}
       </div>
-      <Button type="submit">
+      <Button type="submit" disabled={isSubmitting}>
         Submit
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path
@@ -93,6 +99,13 @@ export function OnboardingForm() {
           />
         </svg>
       </Button>
+      {/* Always mounted so screen readers announce the result when it appears. */}
+      <p
+        className={status.state === 'error' ? styles.submitError : styles.submitSuccess}
+        role="status"
+      >
+        {statusMessage(status)}
+      </p>
     </form>
   )
 }

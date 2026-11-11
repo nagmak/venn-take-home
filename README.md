@@ -29,7 +29,7 @@ src/
   features/             One folder per feature
     onboarding/
       components/       The feature's own UI (OnboardingForm)
-      hooks/            The feature's hooks
+      hooks/            The feature's hooks (form state, corporation check, submit)
       schema.ts         The feature's validation rules and types
   styles/               Global CSS: design tokens and base styles
   test/                 Test-only code: setup and MSW mocks

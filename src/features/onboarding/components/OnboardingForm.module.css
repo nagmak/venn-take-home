@@ -27,6 +27,22 @@
   grid-column: 1 / -1;
 }
 
+.submitError,
+.submitSuccess {
+  margin: 0;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.submitError {
+  color: var(--color-error);
+}
+
+.submitSuccess:empty,
+.submitError:empty {
+  display: none;
+}
+
 @media (max-width: 480px) {
   .fields {
     grid-template-columns: 1fr;

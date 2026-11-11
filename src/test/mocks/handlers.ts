@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { API_BASE_URL } from '../../api/config'
 
 // Test fixture only (from the brief): the app must validate against the API, never this list.
-const VALID_CORPORATION_NUMBERS = [
+export const VALID_CORPORATION_NUMBERS = [
   '826417395',
   '158739264',
   '123456789',
@@ -20,7 +20,8 @@ export const handlers = [
     const number = String(params.number)
     return (VALID_CORPORATION_NUMBERS as readonly string[]).includes(number)
       ? HttpResponse.json({ corporationNumber: number, valid: true })
-      : HttpResponse.json({ valid: false, message: 'Invalid corporation number' })
+      : // Matches the real API: unknown numbers get a 404 with this body.
+        HttpResponse.json({ valid: false, message: 'Invalid corporation number' }, { status: 404 })
   }),
   http.post(`${API_BASE_URL}/profile-details`, () => new HttpResponse(null, { status: 200 })),
 ]
