@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type BaseSyntheticEvent } from 'react'
+import type { UseFormHandleSubmit } from 'react-hook-form'
 import { ApiError, NETWORK_ERROR_STATUS } from '../../../api/client'
 import { submitProfileDetails } from '../../../api/onboarding'
 import type { OnboardingFormValues } from '../onboardingSchema'
@@ -10,13 +11,15 @@ export type SubmitStatus =
   | { state: 'success' }
   | { state: 'error'; message: string }
 
-export function useOnboardingSubmit() {
+/**
+ * Returns the form's submit handler. Each attempt clears the previous result
+ * first, before validation runs, so an old message never shows during a new
+ * attempt.
+ */
+export function useOnboardingSubmit(handleSubmit: UseFormHandleSubmit<OnboardingFormValues>) {
   const [status, setStatus] = useState<SubmitStatus>({ state: 'idle' })
 
-  /** Clears the last result; call at the start of every submit attempt. */
-  const clearStatus = useCallback(() => setStatus({ state: 'idle' }), [])
-
-  const submit = useCallback(async (values: OnboardingFormValues) => {
+  const send = useCallback(async (values: OnboardingFormValues) => {
     try {
       await submitProfileDetails(values)
       setStatus({ state: 'success' })
@@ -28,5 +31,13 @@ export function useOnboardingSubmit() {
     }
   }, [])
 
-  return { status, submit, clearStatus }
+  const onSubmit = useCallback(
+    (event?: BaseSyntheticEvent) => {
+      setStatus({ state: 'idle' })
+      return handleSubmit(send)(event)
+    },
+    [handleSubmit, send],
+  )
+
+  return { status, onSubmit }
 }

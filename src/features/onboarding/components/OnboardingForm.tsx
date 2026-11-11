@@ -65,7 +65,7 @@ export function OnboardingForm() {
     formState: { errors, isSubmitting, isSubmitted, isSubmitSuccessful },
     isCheckingCorporationNumber,
   } = useOnboardingForm()
-  const { status, submit, clearStatus } = useOnboardingSubmit()
+  const { status, onSubmit } = useOnboardingSubmit(handleSubmit)
   // After a submit that failed validation; clears once every field is fixed.
   const showFixMessage = isSubmitted && !isSubmitSuccessful && Object.keys(errors).length > 0
 
@@ -73,11 +73,7 @@ export function OnboardingForm() {
     <form
       className={styles.card}
       aria-labelledby="onboarding-form-title"
-      onSubmit={(event) => {
-        // Clear the previous result as soon as a new attempt starts, before validation.
-        clearStatus()
-        return handleSubmit(submit)(event)
-      }}
+      onSubmit={onSubmit}
     >
       <h1 id="onboarding-form-title" className={styles.title}>
         Onboarding Form
