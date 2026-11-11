@@ -143,10 +143,12 @@ describe('OnboardingForm', () => {
   })
 
   it('aborts a stale check so its late response cannot override the current value', async () => {
+    let staleStarted = false
     let staleAborted = false
     server.use(
       http.get(CORPORATION_URL, async ({ params, request }) => {
         if (params.number !== '000000000') return
+        staleStarted = true
         await delay(200)
         staleAborted = request.signal.aborted
       }),
@@ -155,6 +157,8 @@ describe('OnboardingForm', () => {
     render(<OnboardingForm />)
 
     await typeAndBlur(user, 'Corporation Number', '000000000')
+    // Wait for the request to reach the server before superseding it.
+    await waitFor(() => expect(staleStarted).toBe(true))
     await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
 
     await waitFor(() => expect(staleAborted).toBe(true))
