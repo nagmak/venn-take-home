@@ -1,3 +1,5 @@
+import { TextField } from '../../components/TextField'
+
 const FIELDS = [
   { name: 'firstName', label: 'First Name', type: 'text' },
   { name: 'lastName', label: 'Last Name', type: 'text' },
@@ -10,10 +12,7 @@ export function OnboardingForm() {
     <form aria-labelledby="onboarding-form-title">
       <h1 id="onboarding-form-title">Onboarding Form</h1>
       {FIELDS.map(({ name, label, type }) => (
-        <div key={name}>
-          <label htmlFor={name}>{label}</label>
-          <input id={name} name={name} type={type} />
-        </div>
+        <TextField key={name} name={name} label={label} type={type} />
       ))}
     </form>
   )

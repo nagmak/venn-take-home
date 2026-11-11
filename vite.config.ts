@@ -7,5 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Fixed fake host: tests never depend on a local .env or reach the real API.
+    env: { VITE_API_BASE_URL: 'https://api.test' },
   },
 })
