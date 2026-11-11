@@ -3,8 +3,8 @@ import { validateCorporationNumber } from '../../api/onboarding'
 
 /**
  * The TanStack Query definition for checking a corporation number. TanStack
- * Query caches each answer and shares a request already in flight, so each
- * number is requested once.
+ * Query caches each answer and shares a request already in flight, so an
+ * accepted number is requested once.
  *
  * This is the one place the value is normalized, for both the request and the
  * cache key, so "Checking…" and the check always agree on which number it is.
@@ -14,10 +14,10 @@ export const corporationNumberQuery = (value: string) => {
   return queryOptions({
     queryKey: ['corporationNumber', corporationNumber],
     queryFn: () => validateCorporationNumber(corporationNumber),
-    // A number's answer doesn't change, so it is kept for the whole session
-    // and never refetched. Failures aren't cached as answers, so the next
-    // check retries.
-    staleTime: Infinity,
+    // An accepted number stays accepted, so its answer is kept for the whole
+    // session. A rejected number may be registered later, so it is asked again
+    // on the next check. Failures aren't cached as answers, so they retry too.
+    staleTime: (query) => (query.state.data?.valid ? Infinity : 0),
     gcTime: Infinity,
     // By default TanStack Query pauses requests while the browser reports it is
     // offline, which would leave the check (and submit) waiting with no
