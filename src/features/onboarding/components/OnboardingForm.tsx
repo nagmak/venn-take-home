@@ -56,15 +56,18 @@ const FIELDS: readonly FieldConfig[] = [
 ]
 
 const SUCCESS_MESSAGE = 'Thanks! Your details have been submitted.'
+const FIX_FIELDS_MESSAGE = 'Please fix the highlighted fields.'
 
 export function OnboardingForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isSubmitted, isSubmitSuccessful },
     corporationStatus,
   } = useOnboardingForm()
   const { status, submit } = useOnboardingSubmit()
+  // After a submit that failed validation; clears once every field is fixed.
+  const showFixMessage = isSubmitted && !isSubmitSuccessful && Object.keys(errors).length > 0
 
   return (
     <form
@@ -114,7 +117,7 @@ export function OnboardingForm() {
       </Button>
       {/* Always mounted so screen readers announce results as they appear. */}
       <p className={styles.submitError} role="alert">
-        {status.state === 'error' ? status.message : undefined}
+        {showFixMessage ? FIX_FIELDS_MESSAGE : status.state === 'error' ? status.message : undefined}
       </p>
       <p className={styles.submitSuccess} role="status">
         {status.state === 'success' ? SUCCESS_MESSAGE : undefined}

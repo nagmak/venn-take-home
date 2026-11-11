@@ -59,7 +59,7 @@ describe('OnboardingForm', () => {
     expect(field(label)).toHaveAttribute('maxLength', String(limit))
   })
 
-  it('on submit, shows an error under every empty field and focuses the first', async () => {
+  it('on submit, shows an error under every empty field, focuses the first and asks to fix them', async () => {
     const user = userEvent.setup()
     render(<OnboardingForm />)
 
@@ -70,6 +70,14 @@ describe('OnboardingForm', () => {
     expect(field('Phone Number')).toHaveAccessibleDescription('Phone number is required')
     expect(field('Corporation Number')).toHaveAccessibleDescription('Corporation number is required')
     expect(field('First Name')).toHaveFocus()
+    expect(screen.getByRole('alert')).toHaveTextContent('Please fix the highlighted fields.')
+
+    await typeAndBlur(user, 'First Name', 'Hello')
+    await typeAndBlur(user, 'Last Name', 'World')
+    await typeAndBlur(user, 'Phone Number', '+13062776103')
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeEmptyDOMElement())
   })
 
   it('does not call the API while the corporation number format is invalid', async () => {
