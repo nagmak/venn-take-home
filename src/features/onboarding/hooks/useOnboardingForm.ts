@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { onboardingSchema, type OnboardingFormValues } from './schema'
+import { onboardingSchema, type OnboardingFormValues } from '../schema'
 
 const DEFAULT_VALUES: OnboardingFormValues = {
   firstName: '',

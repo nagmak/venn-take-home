@@ -1,6 +1,12 @@
 import { z } from 'zod'
-import type { OnboardingFormValues } from '../features/onboarding/schema'
 import { ApiError, request } from './client'
+
+export type ProfileDetailsPayload = {
+  firstName: string
+  lastName: string
+  corporationNumber: string
+  phone: string
+}
 
 const corporationNumberResponse = z.object({
   valid: z.boolean(),
@@ -29,6 +35,6 @@ export async function validateCorporationNumber(
 }
 
 /** Resolves on 200. A 400 rejects with an ApiError carrying the API's message. */
-export function submitProfileDetails(payload: OnboardingFormValues): Promise<void> {
+export function submitProfileDetails(payload: ProfileDetailsPayload): Promise<void> {
   return request('/profile-details', { method: 'POST', json: payload })
 }

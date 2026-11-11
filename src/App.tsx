@@ -1,5 +1,5 @@
-import { StepIndicator } from './components/StepIndicator'
-import { OnboardingForm } from './features/onboarding/OnboardingForm'
+import { StepIndicator } from './components/StepIndicator/StepIndicator'
+import { OnboardingForm } from './features/onboarding/components/OnboardingForm'
 import styles from './App.module.css'
 
 export default function App() {

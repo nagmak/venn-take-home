@@ -1,13 +1,13 @@
-import { Button } from '../../components/Button'
-import { TextField } from '../../components/TextField'
+import { Button } from '../../../components/Button/Button'
+import { TextField } from '../../../components/TextField/TextField'
 import styles from './OnboardingForm.module.css'
 import {
   CORPORATION_NUMBER_LENGTH,
   NAME_MAX_LENGTH,
   PHONE_MAX_LENGTH,
   type OnboardingFormValues,
-} from './schema'
-import { useOnboardingForm } from './useOnboardingForm'
+} from '../schema'
+import { useOnboardingForm } from '../hooks/useOnboardingForm'
 
 type FieldConfig = {
   name: keyof OnboardingFormValues
