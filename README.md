@@ -52,7 +52,7 @@ src/
 
 ## Linting
 
-The brief lists ESLint as optional. This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter), the Vite template's default, which runs ESLint-compatible rules. `.oxlintrc.json` enables the React hooks and fast-refresh rules, TypeScript correctness rules, and the import boundaries above.
+The brief lists ESLint as optional. This project uses [oxlint](https://oxc.rs/docs/guide/usage/linter), the Vite template's default, which runs ESLint-compatible rules. `.oxlintrc.json` enables the React hooks and fast-refresh rules, TypeScript correctness rules, and the import boundaries above. A local rule in `lint/test-rules.js` stops tests from waiting a fixed time instead of waiting for an outcome.
 
 ## AI use
 
