@@ -1,32 +1,82 @@
 import { Button } from '../../components/Button'
 import { TextField } from '../../components/TextField'
 import styles from './OnboardingForm.module.css'
+import {
+  CORPORATION_NUMBER_LENGTH,
+  NAME_MAX_LENGTH,
+  PHONE_MAX_LENGTH,
+  type OnboardingFormValues,
+} from './schema'
+import { useOnboardingForm } from './useOnboardingForm'
 
-const FIELDS = [
-  { name: 'firstName', label: 'First Name', type: 'text', fullWidth: false },
-  { name: 'lastName', label: 'Last Name', type: 'text', fullWidth: false },
-  { name: 'phone', label: 'Phone Number', type: 'tel', fullWidth: true },
-  { name: 'corporationNumber', label: 'Corporation Number', type: 'text', fullWidth: true },
-] as const
+type FieldConfig = {
+  name: keyof OnboardingFormValues
+  label: string
+  type: 'text' | 'tel'
+  fullWidth?: boolean
+  maxLength?: number
+  autoComplete?: string
+}
+
+const FIELDS: readonly FieldConfig[] = [
+  {
+    name: 'firstName',
+    label: 'First Name',
+    type: 'text',
+    maxLength: NAME_MAX_LENGTH,
+    autoComplete: 'given-name',
+  },
+  {
+    name: 'lastName',
+    label: 'Last Name',
+    type: 'text',
+    maxLength: NAME_MAX_LENGTH,
+    autoComplete: 'family-name',
+  },
+  {
+    name: 'phone',
+    label: 'Phone Number',
+    type: 'tel',
+    fullWidth: true,
+    maxLength: PHONE_MAX_LENGTH,
+    autoComplete: 'tel',
+  },
+  {
+    name: 'corporationNumber',
+    label: 'Corporation Number',
+    type: 'text',
+    fullWidth: true,
+    maxLength: CORPORATION_NUMBER_LENGTH,
+  },
+]
 
 export function OnboardingForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useOnboardingForm()
+
   return (
     <form
       className={styles.card}
       aria-labelledby="onboarding-form-title"
-      // Static for now: validation and submission are wired up separately.
-      onSubmit={(event) => event.preventDefault()}
+      // Validates every field and shows errors; sending to the API comes next.
+      onSubmit={handleSubmit(() => undefined)}
     >
       <h1 id="onboarding-form-title" className={styles.title}>
         Onboarding Form
       </h1>
       <div className={styles.fields}>
-        {FIELDS.map(({ name, label, type, fullWidth }) => (
+        {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete }) => (
           <TextField
             key={name}
-            name={name}
+            {...register(name)}
             label={label}
             type={type}
+            maxLength={maxLength}
+            autoComplete={autoComplete}
+            error={errors[name]?.message}
             className={fullWidth ? styles.fullWidth : undefined}
           />
         ))}

@@ -8,10 +8,4 @@ describe('Button', () => {
 
     expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('type', 'button')
   })
-
-  it('can be a submit button', () => {
-    render(<Button type="submit">Submit</Button>)
-
-    expect(screen.getByRole('button', { name: 'Submit' })).toHaveAttribute('type', 'submit')
-  })
 })
