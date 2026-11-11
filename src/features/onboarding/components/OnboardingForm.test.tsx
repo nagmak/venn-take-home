@@ -187,6 +187,28 @@ describe('OnboardingForm', () => {
     expect(posts).toBe(0)
   })
 
+  it('stops "Checking…" when the field returns to an already-checked number', async () => {
+    server.use(
+      http.get(CORPORATION_URL, async ({ params }) => {
+        if (params.number === '000000000') await delay(300)
+        // Fall through to the default handler.
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
+    await typeAndBlur(user, 'Corporation Number', '000000000')
+    expect(await screen.findByText('Checking…')).toBeInTheDocument()
+
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+
+    expect(screen.queryByText('Checking…')).not.toBeInTheDocument()
+    await delay(400)
+    expect(field('Corporation Number')).not.toHaveAccessibleDescription()
+  })
+
   it('checks each corporation number with the API only once', async () => {
     let apiCalls = 0
     server.use(

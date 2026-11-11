@@ -3,42 +3,55 @@ import { validateCorporationNumber } from '../../../api/onboarding'
 
 const UNAVAILABLE_MESSAGE = 'Could not verify corporation number. Please try again.'
 
-export type CorporationCheckStatus = 'idle' | 'checking' | 'valid' | 'invalid' | 'error'
+type InFlight = { corporationNumber: string; controller: AbortController }
 
 /**
  * Checks corporation numbers against the API. `check` resolves to an error
- * message, or undefined if the number is valid.
+ * message, or undefined if the number is valid. `isChecking` is true while a
+ * request for the most recently checked number is pending.
  *
  * - Each number is requested once: answers and in-flight checks are shared.
- * - Starting a check for a different number aborts the previous request.
+ * - Checking a different number aborts the request still in flight.
  * - Failures aren't cached, so the next attempt retries.
  */
 export function useCorporationValidation() {
   const checks = useRef(new Map<string, Promise<string | undefined>>())
-  const current = useRef<AbortController | null>(null)
-  const [status, setStatus] = useState<CorporationCheckStatus>('idle')
+  const inFlight = useRef<InFlight | null>(null)
+  const [isChecking, setIsChecking] = useState(false)
 
   const check = useCallback((corporationNumber: string) => {
-    const existing = checks.current.get(corporationNumber)
-    if (existing) return existing
-
-    current.current?.abort()
-    const controller = new AbortController()
-    current.current = controller
-    setStatus('checking')
-
-    const settle = (next: CorporationCheckStatus) => {
-      if (current.current === controller) setStatus(next)
+    const stopInFlight = () => {
+      inFlight.current?.controller.abort()
+      inFlight.current = null
+      setIsChecking(false)
     }
 
-    const pending = validateCorporationNumber(corporationNumber, controller.signal).then(
+    const existing = checks.current.get(corporationNumber)
+    if (existing) {
+      // A request for a different number is now stale.
+      if (inFlight.current && inFlight.current.corporationNumber !== corporationNumber) stopInFlight()
+      return existing
+    }
+
+    stopInFlight()
+    const request: InFlight = { corporationNumber, controller: new AbortController() }
+    inFlight.current = request
+    setIsChecking(true)
+
+    const done = () => {
+      if (inFlight.current !== request) return
+      inFlight.current = null
+      setIsChecking(false)
+    }
+
+    const pending = validateCorporationNumber(corporationNumber, request.controller.signal).then(
       (result) => {
-        settle(result.valid ? 'valid' : 'invalid')
+        done()
         return result.valid ? undefined : result.message
       },
       () => {
         checks.current.delete(corporationNumber)
-        settle('error')
+        done()
         // Never treat an unverified number as valid, including when the check
         // was cancelled: on blur react-hook-form ignores the result (the value
         // changed), and a submit sharing this check is blocked.
@@ -49,5 +62,5 @@ export function useCorporationValidation() {
     return pending
   }, [])
 
-  return { check, status }
+  return { check, isChecking }
 }

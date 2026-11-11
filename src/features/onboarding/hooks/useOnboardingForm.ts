@@ -14,7 +14,7 @@ const DEFAULT_VALUES: OnboardingFormValues = {
 const schemaResolver = zodResolver(onboardingSchema)
 
 export function useOnboardingForm() {
-  const { check: checkCorporationNumber, status: corporationStatus } = useCorporationValidation()
+  const { check: checkCorporationNumber, isChecking: isCheckingCorporationNumber } = useCorporationValidation()
 
   // Runs the zod schema, then checks the corporation number with the API, but
   // only when that field is being validated (its blur, or submit) and its
@@ -42,5 +42,5 @@ export function useOnboardingForm() {
     defaultValues: DEFAULT_VALUES,
   })
 
-  return { ...form, corporationStatus }
+  return { ...form, isCheckingCorporationNumber }
 }

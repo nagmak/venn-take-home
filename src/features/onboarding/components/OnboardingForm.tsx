@@ -63,7 +63,7 @@ export function OnboardingForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting, isSubmitted, isSubmitSuccessful },
-    corporationStatus,
+    isCheckingCorporationNumber,
   } = useOnboardingForm()
   const { status, submit } = useOnboardingSubmit()
   // After a submit that failed validation; clears once every field is fixed.
@@ -80,7 +80,7 @@ export function OnboardingForm() {
       </h1>
       <div className={styles.fields}>
         {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete, inputMode }) => {
-          const checking = name === 'corporationNumber' && corporationStatus === 'checking'
+          const checking = name === 'corporationNumber' && isCheckingCorporationNumber
           return (
             <TextField
               key={name}
