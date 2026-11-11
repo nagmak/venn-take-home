@@ -4,11 +4,14 @@ import styles from './TextField.module.css'
 type TextFieldProps = Omit<ComponentProps<'input'>, 'id'> & {
   label: string
   error?: string
+  /** Non-error help text, e.g. "Checking…". An error takes its place. */
+  hint?: string
 }
 
-export function TextField({ label, error, className, ...inputProps }: TextFieldProps) {
+export function TextField({ label, error, hint, className, ...inputProps }: TextFieldProps) {
   const inputId = useId()
-  const errorId = `${inputId}-error`
+  const messageId = `${inputId}-message`
+  const message = error ?? hint
 
   return (
     <div className={[styles.field, className].filter(Boolean).join(' ')}>
@@ -20,11 +23,11 @@ export function TextField({ label, error, className, ...inputProps }: TextFieldP
         id={inputId}
         className={styles.input}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={message ? messageId : undefined}
       />
-      {/* Always mounted so screen readers announce errors as they appear. */}
-      <p id={errorId} className={styles.error} aria-live="polite">
-        {error}
+      {/* Always mounted so screen readers announce messages as they appear. */}
+      <p id={messageId} className={error ? styles.error : styles.hint} aria-live="polite">
+        {message}
       </p>
     </div>
   )

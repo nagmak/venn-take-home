@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { API_BASE_URL } from '../../../api/config'
 import { VALID_CORPORATION_NUMBERS } from '../../../test/mocks/handlers'
@@ -123,6 +123,64 @@ describe('OnboardingForm', () => {
       expect(field('Corporation Number')).toHaveAccessibleDescription('Invalid corporation number'),
     )
     expect(posts).toBe(0)
+  })
+
+  it('shows "Checking…" while the corporation number is being checked', async () => {
+    server.use(
+      http.get(CORPORATION_URL, async () => {
+        await delay(100)
+        // Fall through to the default handler.
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+
+    expect(await screen.findByText('Checking…')).toBeInTheDocument()
+    expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
+    await waitFor(() => expect(screen.queryByText('Checking…')).not.toBeInTheDocument())
+  })
+
+  it('aborts a stale check so its late response cannot override the current value', async () => {
+    let staleAborted = false
+    server.use(
+      http.get(CORPORATION_URL, async ({ params, request }) => {
+        if (params.number !== '000000000') return
+        await delay(200)
+        staleAborted = request.signal.aborted
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await typeAndBlur(user, 'Corporation Number', '000000000')
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+
+    await waitFor(() => expect(staleAborted).toBe(true))
+    expect(field('Corporation Number')).not.toHaveAttribute('aria-invalid')
+    expect(field('Corporation Number')).not.toHaveAccessibleDescription()
+  })
+
+  it('checks each corporation number with the API only once', async () => {
+    let apiCalls = 0
+    server.use(
+      http.get(CORPORATION_URL, () => {
+        apiCalls++
+      }),
+    )
+    const user = userEvent.setup()
+    render(<OnboardingForm />)
+
+    await fillValidForm(user)
+    await user.tab()
+    await typeAndBlur(user, 'Corporation Number', VALID_CORPORATION_NUMBERS[0])
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Thanks! Your details have been submitted.'),
+    )
+    expect(apiCalls).toBe(1)
   })
 
   it('asks the user to retry when the corporation number cannot be checked', async () => {

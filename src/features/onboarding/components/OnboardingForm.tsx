@@ -61,6 +61,7 @@ export function OnboardingForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    corporationStatus,
   } = useOnboardingForm()
   const { status, submit } = useOnboardingSubmit()
 
@@ -74,18 +75,22 @@ export function OnboardingForm() {
         Onboarding Form
       </h1>
       <div className={styles.fields}>
-        {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete }) => (
-          <TextField
-            key={name}
-            {...register(name)}
-            label={label}
-            type={type}
-            maxLength={maxLength}
-            autoComplete={autoComplete}
-            error={errors[name]?.message}
-            className={fullWidth ? styles.fullWidth : undefined}
-          />
-        ))}
+        {FIELDS.map(({ name, label, type, fullWidth, maxLength, autoComplete }) => {
+          const checking = name === 'corporationNumber' && corporationStatus === 'checking'
+          return (
+            <TextField
+              key={name}
+              {...register(name)}
+              label={label}
+              type={type}
+              maxLength={maxLength}
+              autoComplete={autoComplete}
+              error={checking ? undefined : errors[name]?.message}
+              hint={checking ? 'Checking…' : undefined}
+              className={fullWidth ? styles.fullWidth : undefined}
+            />
+          )
+        })}
       </div>
       <Button type="submit" disabled={isSubmitting}>
         Submit
